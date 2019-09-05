@@ -1,6 +1,5 @@
-package com.hoc.pagination_mvi.data
+package com.hoc.pagination_mvi.data.remote
 
-import com.hoc.pagination_mvi.data.remote.PhotoResponse
 import retrofit2.Retrofit
 import retrofit2.create
 import retrofit2.http.GET
@@ -16,8 +15,6 @@ interface ApiService {
   ): List<PhotoResponse>
 
   companion object {
-    operator fun invoke(retrofit: Retrofit): ApiService {
-      return retrofit.create<ApiService>()
-    }
+    operator fun invoke(retrofit: Retrofit) = retrofit.create<ApiService>()
   }
 }

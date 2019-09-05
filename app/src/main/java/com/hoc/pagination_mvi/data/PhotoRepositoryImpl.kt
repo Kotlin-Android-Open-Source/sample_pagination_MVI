@@ -1,11 +1,15 @@
 package com.hoc.pagination_mvi.data
 
+import com.hoc.pagination_mvi.data.remote.ApiService
+import com.hoc.pagination_mvi.di.ApplicationScope
 import com.hoc.pagination_mvi.domain.dispatchers_schedulers.CoroutinesDispatchersProvider
 import com.hoc.pagination_mvi.domain.entity.Photo
 import com.hoc.pagination_mvi.domain.repository.PhotoRepository
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
-class PhotoRepositoryImpl(
+@ApplicationScope
+class PhotoRepositoryImpl @Inject constructor(
   private val apiService: ApiService,
   private val dispatchersProvider: CoroutinesDispatchersProvider
 ) : PhotoRepository {
