@@ -19,12 +19,6 @@ abstract class ViewModelModule {
   abstract fun provideVMFactory(appViewModelFactory: AppViewModelFactory): ViewModelProvider.Factory
 
   @Binds
-  abstract fun a(rxSchedulerProviderImpl: RxSchedulerProviderImpl): RxSchedulerProvider
-
-  @Binds
-  abstract fun b(coroutinesDispatchersProviderImpl: CoroutinesDispatchersProviderImpl): CoroutinesDispatchersProvider
-
-  @Binds
   @IntoMap
   @ViewModelKey(MainVM::class)
   abstract fun bindMainVM(mainVM: MainVM): ViewModel

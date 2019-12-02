@@ -15,7 +15,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 
 @Module
-class NetworkModule {
+class DataModule {
   @ApplicationScope
   @Provides
   fun provideApiService(retrofit: Retrofit): ApiService {
