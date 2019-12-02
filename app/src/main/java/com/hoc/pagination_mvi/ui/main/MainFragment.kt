@@ -18,21 +18,20 @@ import dagger.android.support.HasSupportFragmentInjector
 import javax.inject.Inject
 
 class MainFragment : Fragment() {
-  override fun onCreateView(
-    inflater: LayoutInflater,
-    container: ViewGroup?,
-    savedInstanceState: Bundle?
-  ): View = inflater.inflate(R.layout.fragment_main, container, false)
-
   @Inject
   lateinit var factory: ViewModelProvider.Factory
-
   private val mainVM by viewModels<MainVM> { factory }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     AndroidSupportInjection.inject(this)
     super.onCreate(savedInstanceState)
   }
+
+  override fun onCreateView(
+    inflater: LayoutInflater,
+    container: ViewGroup?,
+    savedInstanceState: Bundle?
+  ): View = inflater.inflate(R.layout.fragment_main, container, false)
 
   override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
     super.onViewCreated(view, savedInstanceState)
