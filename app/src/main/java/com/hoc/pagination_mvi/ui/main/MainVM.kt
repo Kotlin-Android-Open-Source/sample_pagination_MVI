@@ -4,8 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.hoc.pagination_mvi.domain.usecase.GetPhotosUseCase
-import com.hoc.pagination_mvi.ui.main.MainContract.ViewIntent
-import com.hoc.pagination_mvi.ui.main.MainContract.ViewState
+import com.hoc.pagination_mvi.ui.main.MainContract.*
 import io.reactivex.Observable
 import io.reactivex.ObservableTransformer
 import io.reactivex.disposables.CompositeDisposable
@@ -18,20 +17,25 @@ import javax.inject.Inject
 class MainVM @Inject constructor(
   private val getPhotosUseCase: GetPhotosUseCase
 ) : ViewModel() {
+  private val initial = ViewState.initial()
   private val _stateD =
-    MutableLiveData<ViewState>().apply { value = ViewState.initial() }
+    MutableLiveData<ViewState>().apply { value = initial }
+  private val intentS = PublishSubject.create<ViewIntent>()
+  private val compositeDisposable = CompositeDisposable()
 
   val stateD: LiveData<ViewState> get() = _stateD
 
-  private val intentS = PublishSubject.create<ViewIntent>()
-
-  private val compositeDisposable = CompositeDisposable()
-
   fun processIntents(intents: Observable<ViewIntent>) = intents.subscribe(intentS::onNext)!!
+
+  private val toPartialStateChange = ObservableTransformer<ViewIntent, PartialStateChange> {
+    TODO()
+  }
 
   init {
     intentS
       .compose(intentFilter)
+      .compose(toPartialStateChange)
+      .scan(initial) { vs, change -> change.reduce(vs) }
       .subscribeBy { }
       .addTo(compositeDisposable)
   }

@@ -56,7 +56,9 @@ interface MainContract {
   }
 
   sealed class PartialStateChange {
-
+    fun reduce(vs: ViewState): ViewState {
+      TODO()
+    }
   }
 
   sealed class SingleEvent {
