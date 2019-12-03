@@ -18,8 +18,7 @@ class MainVM @Inject constructor(
   private val getPhotosUseCase: GetPhotosUseCase
 ) : ViewModel() {
   private val initial = ViewState.initial()
-  private val _stateD =
-    MutableLiveData<ViewState>().apply { value = initial }
+  private val _stateD = MutableLiveData<ViewState>().apply { value = initial }
   private val intentS = PublishSubject.create<ViewIntent>()
   private val compositeDisposable = CompositeDisposable()
 

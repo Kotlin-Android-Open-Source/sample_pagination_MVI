@@ -43,9 +43,9 @@ class DataModule {
   @Provides
   fun provideOkHttpClient(): OkHttpClient {
     return OkHttpClient.Builder()
-      .connectTimeout(20, TimeUnit.SECONDS)
-      .readTimeout(20, TimeUnit.SECONDS)
-      .writeTimeout(20, TimeUnit.SECONDS)
+      .connectTimeout(10, TimeUnit.SECONDS)
+      .readTimeout(10, TimeUnit.SECONDS)
+      .writeTimeout(10, TimeUnit.SECONDS)
       .apply {
         if (BuildConfig.DEBUG) {
           HttpLoggingInterceptor()
