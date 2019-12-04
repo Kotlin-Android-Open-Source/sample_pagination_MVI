@@ -10,5 +10,5 @@ class CoroutinesDispatchersProviderImpl @Inject constructor(
   rxSchedulerProvider: RxSchedulerProvider
 ) : CoroutinesDispatchersProvider {
   override val io: CoroutineDispatcher = rxSchedulerProvider.io.asCoroutineDispatcher()
-  override val ui: CoroutineDispatcher = rxSchedulerProvider.ui.asCoroutineDispatcher()
+  override val main: CoroutineDispatcher = rxSchedulerProvider.main.asCoroutineDispatcher()
 }

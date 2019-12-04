@@ -9,5 +9,5 @@ import javax.inject.Inject
 @ApplicationScope
 class RxSchedulerProviderImpl @Inject constructor() : RxSchedulerProvider {
   override val io = Schedulers.io()
-  override val ui: Scheduler = AndroidSchedulers.mainThread()
+  override val main: Scheduler = AndroidSchedulers.mainThread()
 }

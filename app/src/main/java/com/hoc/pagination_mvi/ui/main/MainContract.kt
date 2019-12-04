@@ -1,10 +1,15 @@
 package com.hoc.pagination_mvi.ui.main
 
+import androidx.annotation.LayoutRes
+import com.hoc.pagination_mvi.R
+import com.hoc.pagination_mvi.domain.entity.Photo as PhotoDomain
+
 interface MainContract {
   data class ViewState(
     val items: List<Item>,
     val isLoading: Boolean,
-    val error: Throwable?
+    val error: Throwable?,
+    val photoItems: List<Item.Photo>
   ) {
     companion object Factory {
       @JvmStatic
@@ -17,32 +22,44 @@ interface MainContract {
           )
         ),
         isLoading = true,
-        error = null
+        error = null,
+        photoItems = emptyList()
       )
     }
   }
 
-  sealed class Item {
+  sealed class Item(@LayoutRes val viewType: Int) {
+
     data class HorizontalList(
       val items: List<HorizontalItem>,
       val isLoading: Boolean,
       val error: Throwable?
-    ) : Item() {
+    ) : Item(R.layout.recycler_item_horizontal_list) {
       sealed class HorizontalItem {
         data class Item(val s: String) : HorizontalItem()
         data class Placeholder(val state: PlaceholderState) : HorizontalItem()
       }
     }
 
-    data class Photo(
-      val albumId: Int,
-      val id: Int,
-      val thumbnailUrl: String,
-      val title: String,
-      val url: String
-    ) : Item()
+    data class Photo(val photo: PhotoVS) : Item(R.layout.recycler_item_photo)
 
-    data class Placeholder(val state: PlaceholderState) : Item()
+    data class Placeholder(val state: PlaceholderState) : Item(R.layout.recycler_item_placeholder)
+  }
+
+  data class PhotoVS(
+    val albumId: Int,
+    val id: Int,
+    val thumbnailUrl: String,
+    val title: String,
+    val url: String
+  ) {
+    constructor(domain: PhotoDomain) : this(
+      id = domain.id,
+      albumId = domain.albumId,
+      thumbnailUrl = domain.thumbnailUrl,
+      title = domain.title,
+      url = domain.url
+    )
   }
 
   sealed class PlaceholderState {
@@ -53,11 +70,71 @@ interface MainContract {
 
   sealed class ViewIntent {
     object Initial : ViewIntent()
+    object LoadNextPage : ViewIntent()
   }
 
   sealed class PartialStateChange {
-    fun reduce(vs: ViewState): ViewState {
-      TODO()
+    abstract fun reduce(vs: ViewState): ViewState
+
+    sealed class PhotoFirstPage : PartialStateChange() {
+      data class Data(val photos: List<PhotoVS>) : PhotoFirstPage()
+      data class Error(val error: Throwable) : PhotoFirstPage()
+      object Loading : PhotoFirstPage()
+
+      override fun reduce(vs: ViewState): ViewState {
+        return when (this) {
+          is Data -> {
+            val photoItems = this.photos.map { Item.Photo(it) }
+            vs.copy(
+              isLoading = false,
+              error = null,
+              items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder }
+                  + photoItems
+                  + Item.Placeholder(PlaceholderState.Idle),
+              photoItems = photoItems
+            )
+          }
+          is Error -> vs.copy(
+            isLoading = false,
+            error = this.error
+          )
+          Loading -> vs.copy(isLoading = true)
+        }
+      }
+    }
+
+    sealed class PhotoNextPage : PartialStateChange() {
+      data class Data(val photos: List<PhotoVS>) : PhotoNextPage()
+      data class Error(val error: Throwable) : PhotoNextPage()
+      object Loading : PhotoNextPage()
+
+      override fun reduce(vs: ViewState): ViewState {
+        return when (this) {
+          is Data -> {
+            val photoItems =
+              vs.items.filterIsInstance<Item.Photo>() + this.photos.map { Item.Photo(it) }
+
+            vs.copy(
+              items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder }
+                  + photoItems
+                  + Item.Placeholder(PlaceholderState.Idle),
+              photoItems = photoItems
+            )
+          }
+          is Error -> vs.copy(
+            items = vs.items.filter { it !is Item.Placeholder } +
+                Item.Placeholder(
+                  PlaceholderState.Error(
+                    this.error
+                  )
+                )
+          )
+          Loading -> vs.copy(
+            items = vs.items.filter { it !is Item.Placeholder } +
+                Item.Placeholder(PlaceholderState.Loading)
+          )
+        }
+      }
     }
   }
 
