@@ -61,7 +61,11 @@ class MainFragment : Fragment() {
       layoutManager = GridLayoutManager(context, maxSpanCount).apply {
         spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
           override fun getSpanSize(position: Int): Int {
-            return 1
+            return if (this@MainFragment.adapter.getItemViewType(position) == R.layout.recycler_item_horizontal_list) {
+              2
+            } else {
+              1
+            }
           }
         }
       }

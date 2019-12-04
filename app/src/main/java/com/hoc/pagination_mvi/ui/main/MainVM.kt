@@ -45,7 +45,7 @@ class MainVM @Inject constructor(
     ObservableTransformer<ViewIntent.Initial, PartialStateChange> { intents ->
       intents
         .withLatestFrom(stateS)
-        .filter { (_, vs) -> vs.items.isEmpty() }
+        .filter { (_, vs) -> vs.photoItems.isEmpty() }
         .flatMap {
           rxObservable(dispatchers.main) {
             send(PartialStateChange.PhotoFirstPage.Loading)
