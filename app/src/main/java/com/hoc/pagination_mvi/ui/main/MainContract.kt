@@ -24,6 +24,22 @@ interface MainContract {
         ?.state is PlaceholderState.Error
     }
 
+    fun canLoadNextPageHorizontal(): Boolean {
+      val horizontalList =
+        items.singleOrNull { it is Item.HorizontalList } as? Item.HorizontalList ?: return false
+      return !horizontalList.isLoading &&
+          horizontalList.error == null &&
+          horizontalList.postItems.isNotEmpty() &&
+          (horizontalList.items.singleOrNull { it is HorizontalItem.Placeholder } as? HorizontalItem.Placeholder)
+            ?.state == PlaceholderState.Idle
+    }
+
+    fun getHorizontalListCount(): Int {
+      val horizontalList =
+        items.singleOrNull { it is Item.HorizontalList } as? Item.HorizontalList ?: return 0
+      return horizontalList.postItems.size
+    }
+
     companion object Factory {
       @JvmStatic
       fun initial() = ViewState(
@@ -110,8 +126,8 @@ interface MainContract {
     object LoadNextPage : ViewIntent()
     object RetryLoadPage : ViewIntent()
 
-    object LoadNextPageHorizontal: ViewIntent()
-    object RetryLoadPageHorizontal: ViewIntent()
+    object LoadNextPageHorizontal : ViewIntent()
+    object RetryLoadPageHorizontal : ViewIntent()
   }
 
   sealed class PartialStateChange {
@@ -239,6 +255,63 @@ interface MainContract {
         }
       }
     }
+
+    sealed class PostNextPage : PartialStateChange() {
+      data class Data(val posts: List<PostVS>) : PostNextPage()
+      data class Error(val error: Throwable) : PostNextPage()
+      object Loading : PostNextPage()
+
+      override fun reduce(vs: ViewState): ViewState {
+        return when (this) {
+          is Data -> {
+            vs.copy(
+              items = vs.items.map { item ->
+                if (item is Item.HorizontalList) {
+                  val postItems = item.items.filterIsInstance<HorizontalItem.Post>() +
+                      this.posts.map { HorizontalItem.Post(it) }
+                  item.copy(
+                    items = postItems + HorizontalItem.Placeholder(PlaceholderState.Idle),
+                    postItems = postItems
+                  )
+                } else {
+                  item
+                }
+              }
+            )
+          }
+          is Error -> {
+            vs.copy(
+              items = vs.items.map { item ->
+                if (item is Item.HorizontalList) {
+                  val postItems = item.items.filterIsInstance<HorizontalItem.Post>()
+                  item.copy(
+                    items = postItems + HorizontalItem.Placeholder(PlaceholderState.Error(error)),
+                    postItems = postItems
+                  )
+                } else {
+                  item
+                }
+              }
+            )
+          }
+          Loading -> {
+            vs.copy(
+              items = vs.items.map { item ->
+                if (item is Item.HorizontalList) {
+                  val postItems = item.items.filterIsInstance<HorizontalItem.Post>()
+                  item.copy(
+                    items = postItems + HorizontalItem.Placeholder(PlaceholderState.Loading),
+                    postItems = postItems
+                  )
+                } else {
+                  item
+                }
+              }
+            )
+          }
+        }
+      }
+    }
   }
 
   sealed class SingleEvent {
@@ -250,5 +323,6 @@ interface MainContract {
     fun photoFirstPageChanges(limit: Int): Observable<PartialStateChange.PhotoFirstPage>
 
     fun postFirstPageChanges(limit: Int): Observable<PartialStateChange.PostFirstPage>
+    fun postNextPageChanges(start: Int, limit: Int): Observable<PartialStateChange.PostNextPage>
   }
 }

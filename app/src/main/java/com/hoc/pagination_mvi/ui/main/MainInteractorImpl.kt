@@ -66,4 +66,22 @@ class MainInteractorImpl @Inject constructor(
       }
     }
   }
+
+  override fun postNextPageChanges(
+    start: Int,
+    limit: Int
+  ): Observable<MainContract.PartialStateChange.PostNextPage> {
+    return rxObservable(dispatchers.main) {
+      send(MainContract.PartialStateChange.PostNextPage.Loading)
+      try {
+        getPostsUseCase(start = start, limit = limit)
+          .map(::PostVS)
+          .let { MainContract.PartialStateChange.PostNextPage.Data(it) }
+          .let { send(it) }
+      } catch (e: Exception) {
+        delay(500)
+        send(MainContract.PartialStateChange.PostNextPage.Error(e))
+      }
+    }
+  }
 }

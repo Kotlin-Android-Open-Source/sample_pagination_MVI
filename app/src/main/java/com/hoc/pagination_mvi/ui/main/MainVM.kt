@@ -67,13 +67,23 @@ class MainVM @Inject constructor(
         .exhaustMap { interactor.photoNextPageChanges(start = it, limit = PHOTO_PAGE_SIZE) }
     }
 
+  private val loadNextPageHorizontalProcessor =
+    ObservableTransformer<ViewIntent.LoadNextPageHorizontal, PartialStateChange> { intents ->
+      intents
+        .withLatestFrom(stateObservable)
+        .filter { (_, vs) -> vs.canLoadNextPageHorizontal() }
+        .map { (_, vs) -> vs.getHorizontalListCount() }
+        .exhaustMap { interactor.postNextPageChanges(start = it, limit = POST_PAGE_SIZE) }
+    }
+
   private val toPartialStateChange =
     ObservableTransformer<ViewIntent, PartialStateChange> { intents ->
       intents.publish { shared ->
         Observable.mergeArray(
           shared.ofType<ViewIntent.Initial>().compose(initialProcessor),
           shared.ofType<ViewIntent.LoadNextPage>().compose(nextPageProcessor),
-          shared.ofType<ViewIntent.RetryLoadPage>().compose(retryLoadPageProcessor)
+          shared.ofType<ViewIntent.RetryLoadPage>().compose(retryLoadPageProcessor),
+          shared.ofType<ViewIntent.LoadNextPageHorizontal>().compose(loadNextPageHorizontalProcessor)
         )
       }
     }
