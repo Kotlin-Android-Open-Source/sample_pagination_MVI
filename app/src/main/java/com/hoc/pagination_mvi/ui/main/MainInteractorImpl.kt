@@ -26,7 +26,7 @@ class MainInteractorImpl @Inject constructor(
           .let { MainContract.PartialStateChange.PhotoNextPage.Data(it) }
           .let { send(it) }
       } catch (e: Exception) {
-        delay(1_000)
+        delay(500)
         send(MainContract.PartialStateChange.PhotoNextPage.Error(e))
       }
     }
@@ -41,6 +41,7 @@ class MainInteractorImpl @Inject constructor(
           .let { MainContract.PartialStateChange.PhotoFirstPage.Data(it) }
           .let { send(it) }
       } catch (e: Exception) {
+        delay(500)
         send(MainContract.PartialStateChange.PhotoFirstPage.Error(e))
       }
     }
