@@ -71,6 +71,7 @@ interface MainContract {
   sealed class ViewIntent {
     object Initial : ViewIntent()
     object LoadNextPage : ViewIntent()
+    object Retry : ViewIntent()
   }
 
   sealed class PartialStateChange {

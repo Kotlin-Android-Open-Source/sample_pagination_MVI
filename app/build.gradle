@@ -79,4 +79,7 @@ dependencies {
 
     // Extensions for LiveData
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.2.0-rc02'
+
+    // coil
+    implementation 'io.coil-kt:coil:0.8.0'
 }

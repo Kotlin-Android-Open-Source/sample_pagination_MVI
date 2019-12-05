@@ -1,9 +1,8 @@
 package com.hoc.pagination_mvi.ui.main
 
-import android.content.Context
-import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.graphics.Rect
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,6 +17,7 @@ import com.hoc.pagination_mvi.isOrientationPortrait
 import com.hoc.pagination_mvi.ui.main.MainContract.ViewIntent
 import com.jakewharton.rxbinding3.recyclerview.scrollEvents
 import dagger.android.support.AndroidSupportInjection
+import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.ObservableSource
 import io.reactivex.disposables.CompositeDisposable
@@ -35,9 +35,9 @@ class MainFragment : Fragment() {
   private val compositeDisposable = CompositeDisposable()
 
   private val maxSpanCount get() = if (requireContext().isOrientationPortrait) 2 else 4
-  private val visibleThreshold get() = maxSpanCount
+  private val visibleThreshold get() = 2 * maxSpanCount + 1
 
-  private val adapter = MainAdapter()
+  private val adapter = MainAdapter(compositeDisposable)
 
   override fun onCreate(savedInstanceState: Bundle?) {
     AndroidSupportInjection.inject(this)
@@ -62,10 +62,10 @@ class MainFragment : Fragment() {
       layoutManager = GridLayoutManager(context, maxSpanCount).apply {
         spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
           override fun getSpanSize(position: Int): Int {
-            return if (this@MainFragment.adapter.getItemViewType(position) == R.layout.recycler_item_horizontal_list) {
-              2
-            } else {
+            return if (this@MainFragment.adapter.getItemViewType(position) == R.layout.recycler_item_photo) {
               1
+            } else {
+              2
             }
           }
         }
@@ -80,11 +80,34 @@ class MainFragment : Fragment() {
           parent: RecyclerView,
           state: RecyclerView.State
         ) {
-          outRect.left = space
-          outRect.bottom = space
-          outRect.right = space
-          // Add top margin only for the first item to avoid double space between items
-          outRect.top = if (parent.getChildLayoutPosition(view) == 0) space else 0
+          val adapter = parent.adapter!!
+          val position = parent.getChildAdapterPosition(view)
+
+          when (adapter.getItemViewType(position)) {
+            R.layout.recycler_item_horizontal_list -> {
+              outRect.left = space
+              outRect.right = space
+              outRect.top = space
+              outRect.bottom = 0
+            }
+            R.layout.recycler_item_photo -> {
+              outRect.top = space
+              outRect.bottom = 0
+              if (position % 2 != 0) {
+                outRect.left = space
+                outRect.right = space / 2
+              } else {
+                outRect.left = space / 2
+                outRect.right = space
+              }
+            }
+            R.layout.recycler_item_placeholder -> {
+              outRect.left = space
+              outRect.right = space
+              outRect.top = space
+              outRect.bottom = space
+            }
+          }
         }
       })
     }
@@ -98,7 +121,8 @@ class MainFragment : Fragment() {
     mainVM.processIntents(
       Observable.mergeArray(
         Observable.just(ViewIntent.Initial),
-        loadNextPageIntent()
+        loadNextPageIntent(),
+        adapter.retryObservable.map { ViewIntent.Retry }
       )
     ).addTo(compositeDisposable)
   }
@@ -106,7 +130,6 @@ class MainFragment : Fragment() {
   private fun loadNextPageIntent(): ObservableSource<ViewIntent> {
     return recycler
       .scrollEvents()
-      .throttleFirst(400, TimeUnit.MILLISECONDS)
       .filter { (_, _, dy) ->
         val layoutManager = recycler.layoutManager as GridLayoutManager
         dy > 0 && layoutManager.findLastVisibleItemPosition() + visibleThreshold >= layoutManager.itemCount
