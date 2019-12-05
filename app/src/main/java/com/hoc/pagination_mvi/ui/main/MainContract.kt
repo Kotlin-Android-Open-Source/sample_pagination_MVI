@@ -50,9 +50,10 @@ interface MainContract {
     ) : Item(R.layout.recycler_item_horizontal_list) {
 
       sealed class HorizontalItem(@LayoutRes val viewType: Int) {
-        data class Post(val post: PostVS) : HorizontalItem(TODO())
+        data class Post(val post: PostVS) : HorizontalItem(R.layout.recycler_item_horizontal_post)
 
-        data class Placeholder(val state: PlaceholderState) : HorizontalItem(TODO())
+        data class Placeholder(val state: PlaceholderState) :
+          HorizontalItem(R.layout.recycler_item_horizontal_placeholder)
       }
 
     }
