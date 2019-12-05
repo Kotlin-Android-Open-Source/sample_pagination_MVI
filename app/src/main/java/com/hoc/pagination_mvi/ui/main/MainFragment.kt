@@ -94,7 +94,7 @@ class MainFragment : Fragment() {
               outRect.top = space
               outRect.bottom = 0
 
-              val column = position % maxSpanCount - 1
+              val column = (position - 1) % maxSpanCount
               outRect.right = space * (column + 1) / maxSpanCount
               outRect.left = space - space * column / maxSpanCount
             }
