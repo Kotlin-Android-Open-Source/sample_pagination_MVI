@@ -58,18 +58,19 @@ class MainFragment : Fragment() {
   private fun setupView() {
     recycler.run {
       setHasFixedSize(true)
+      adapter = this@MainFragment.adapter
+
       layoutManager = GridLayoutManager(context, maxSpanCount).apply {
         spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
           override fun getSpanSize(position: Int): Int {
-            return if (this@MainFragment.adapter.getItemViewType(position) == R.layout.recycler_item_photo) {
+            return if (adapter!!.getItemViewType(position) == R.layout.recycler_item_photo) {
               1
             } else {
-              2
+              maxSpanCount
             }
           }
         }
       }
-      adapter = this@MainFragment.adapter
 
       val space = 8
       addItemDecoration(object : RecyclerView.ItemDecoration() {
@@ -92,13 +93,10 @@ class MainFragment : Fragment() {
             R.layout.recycler_item_photo -> {
               outRect.top = space
               outRect.bottom = 0
-              if (position % 2 != 0) {
-                outRect.left = space
-                outRect.right = space / 2
-              } else {
-                outRect.left = space / 2
-                outRect.right = space
-              }
+
+              val column = position % maxSpanCount - 1
+              outRect.right = space * (column + 1) / maxSpanCount
+              outRect.left = space - space * column / maxSpanCount
             }
             R.layout.recycler_item_placeholder -> {
               outRect.left = space
