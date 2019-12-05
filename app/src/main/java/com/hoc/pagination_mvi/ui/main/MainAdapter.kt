@@ -1,5 +1,6 @@
 package com.hoc.pagination_mvi.ui.main
 
+import android.graphics.Rect
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -15,6 +16,7 @@ import com.hoc.pagination_mvi.R
 import com.hoc.pagination_mvi.asObservable
 import com.hoc.pagination_mvi.ui.main.MainContract.Item
 import com.hoc.pagination_mvi.ui.main.MainContract.PlaceholderState
+import com.jakewharton.rxbinding3.recyclerview.scrollEvents
 import com.jakewharton.rxbinding3.view.clicks
 import com.jakewharton.rxbinding3.view.detaches
 import io.reactivex.disposables.CompositeDisposable
@@ -53,12 +55,15 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
   private val retryS = PublishSubject.create<Unit>()
   val retryObservable get() = retryS.asObservable()
 
+  private val loadNextPageHorizontalS = PublishSubject.create<Unit>()
+  val loadNextPageHorizontalObservable get() = loadNextPageHorizontalS.asObservable()
+
   override fun onCreateViewHolder(parent: ViewGroup, @LayoutRes viewType: Int): VH {
     val itemView = LayoutInflater.from(parent.context).inflate(viewType, parent, false)
     return when (viewType) {
       R.layout.recycler_item_photo -> PhotoVH(itemView)
       R.layout.recycler_item_placeholder -> PlaceHolderVH(itemView, parent)
-      R.layout.recycler_item_horizontal_list -> HorizontalListVH(itemView)
+      R.layout.recycler_item_horizontal_list -> HorizontalListVH(itemView, parent)
       else -> error("Unknown viewType=$viewType")
     }
   }
@@ -151,19 +156,41 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
     }
   }
 
-  private class HorizontalListVH(itemView: View) : VH(itemView) {
+  private inner class HorizontalListVH(itemView: View, parent: ViewGroup) : VH(itemView) {
     private val recycler = itemView.recycler_horizontal!!
     private val progressBar = itemView.progress_bar_horizontal!!
     private val textError = itemView.text_error_horizontal!!
     private val buttonRetry = itemView.button_retry_horizontal!!
     private val adapter = HorizontalAdapter()
+    private val visibleThreshold get() = 2
 
     init {
       recycler.run {
         setHasFixedSize(true)
         adapter = this@HorizontalListVH.adapter
         layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false)
+        addItemDecoration(object : RecyclerView.ItemDecoration() {
+          override fun getItemOffsets(
+            outRect: Rect,
+            view: View,
+            parent: RecyclerView,
+            state: RecyclerView.State
+          ) {
+            outRect.left =
+              if (parent.getChildAdapterPosition(view) == parent.adapter!!.itemCount - 1) 0 else 8
+          }
+        })
       }
+
+      recycler
+        .scrollEvents()
+        .takeUntil(parent.detaches())
+        .filter { (_, dx, _) ->
+          val layoutManager = recycler.layoutManager as LinearLayoutManager
+          dx > 0 && layoutManager.findLastVisibleItemPosition() + visibleThreshold >= layoutManager.itemCount
+        }
+        .subscribeBy { loadNextPageHorizontalS.onNext(Unit) }
+        .addTo(compositeDisposable)
     }
 
     override fun bind(item: Item) {

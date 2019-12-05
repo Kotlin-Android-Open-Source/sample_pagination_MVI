@@ -124,7 +124,10 @@ class MainFragment : Fragment() {
         adapter
           .retryObservable
           .throttleFirst(500, TimeUnit.MILLISECONDS)
-          .map { ViewIntent.RetryLoadPage }
+          .map { ViewIntent.RetryLoadPage },
+        adapter
+          .loadNextPageHorizontalObservable
+          .map { ViewIntent.LoadNextPageHorizontal }
       )
     ).addTo(compositeDisposable)
   }
