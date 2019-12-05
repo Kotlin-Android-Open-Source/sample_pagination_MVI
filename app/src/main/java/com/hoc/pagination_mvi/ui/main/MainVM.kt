@@ -64,7 +64,6 @@ class MainVM @Inject constructor(
   private val nextPageProcessor =
     ObservableTransformer<ViewIntent.LoadNextPage, PartialStateChange> { intents ->
       intents
-        .throttleFirst(400, TimeUnit.MILLISECONDS)
         .withLatestFrom(stateObservable)
         .filter { (_, vs) -> canLoadNextPage(vs) }
         .map { (_, vs) -> vs.photoItems.size }

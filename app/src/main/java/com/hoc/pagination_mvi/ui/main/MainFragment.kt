@@ -24,6 +24,7 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
 import kotlinx.android.synthetic.main.fragment_main.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @ExperimentalCoroutinesApi
@@ -103,7 +104,9 @@ class MainFragment : Fragment() {
   }
 
   private fun loadNextPageIntent(): ObservableSource<ViewIntent> {
-    return recycler.scrollEvents()
+    return recycler
+      .scrollEvents()
+      .throttleFirst(400, TimeUnit.MILLISECONDS)
       .filter { (_, _, dy) ->
         val layoutManager = recycler.layoutManager as GridLayoutManager
         dy > 0 && layoutManager.findLastVisibleItemPosition() + visibleThreshold >= layoutManager.itemCount
