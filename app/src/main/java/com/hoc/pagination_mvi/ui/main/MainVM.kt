@@ -1,6 +1,5 @@
 package com.hoc.pagination_mvi.ui.main
 
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
@@ -21,7 +20,6 @@ import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.rx2.rxObservable
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @ExperimentalCoroutinesApi
@@ -44,7 +42,7 @@ class MainVM @Inject constructor(
   private val initialProcessor =
     ObservableTransformer<ViewIntent.Initial, PartialStateChange> { intents ->
       intents
-        .withLatestFrom(stateS)
+        .withLatestFrom(stateObservable)
         .filter { (_, vs) -> vs.photoItems.isEmpty() }
         .flatMap {
           rxObservable(dispatchers.main) {
@@ -65,7 +63,7 @@ class MainVM @Inject constructor(
     ObservableTransformer<ViewIntent.LoadNextPage, PartialStateChange> { intents ->
       intents
         .withLatestFrom(stateObservable)
-        .filter { (_, vs) -> canLoadNextPage(vs) }
+        .filter { (_, vs) -> vs.canLoadNextPage() }
         .map { (_, vs) -> vs.photoItems.size }
         .exhaustMap { start ->
           rxObservable(dispatchers.main) {
@@ -81,13 +79,6 @@ class MainVM @Inject constructor(
           }
         }
     }
-
-  private fun canLoadNextPage(vs: ViewState): Boolean {
-    return !vs.isLoading &&
-        vs.error == null &&
-        vs.photoItems.isNotEmpty() &&
-        (vs.items.findLast { it is Item.Placeholder } as? Item.Placeholder)?.state == PlaceholderState.Idle
-  }
 
   private val toPartialStateChange =
     ObservableTransformer<ViewIntent, PartialStateChange> { intents ->

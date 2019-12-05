@@ -7,10 +7,15 @@ import com.hoc.pagination_mvi.domain.entity.Photo as PhotoDomain
 interface MainContract {
   data class ViewState(
     val items: List<Item>,
-    val isLoading: Boolean,
-    val error: Throwable?,
     val photoItems: List<Item.Photo>
   ) {
+
+    fun canLoadNextPage(): Boolean {
+      return photoItems.isNotEmpty() &&
+          (items.singleOrNull { it is Item.Placeholder } as? Item.Placeholder)
+            ?.state == PlaceholderState.Idle
+    }
+
     companion object Factory {
       @JvmStatic
       fun initial() = ViewState(
@@ -21,8 +26,6 @@ interface MainContract {
             error = null
           )
         ),
-        isLoading = true,
-        error = null,
         photoItems = emptyList()
       )
     }
@@ -87,8 +90,6 @@ interface MainContract {
           is Data -> {
             val photoItems = this.photos.map { Item.Photo(it) }
             vs.copy(
-              isLoading = false,
-              error = null,
               items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder }
                   + photoItems
                   + Item.Placeholder(PlaceholderState.Idle),
@@ -96,10 +97,14 @@ interface MainContract {
             )
           }
           is Error -> vs.copy(
-            isLoading = false,
-            error = this.error
+            items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder }
+                + Item.Placeholder(PlaceholderState.Error(this.error)),
+            photoItems = emptyList()
           )
-          Loading -> vs.copy(isLoading = true)
+          Loading -> vs.copy(
+            items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder }
+                + Item.Placeholder(PlaceholderState.Loading)
+          )
         }
       }
     }
