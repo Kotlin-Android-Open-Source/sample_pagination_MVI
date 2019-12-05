@@ -27,17 +27,12 @@ import kotlinx.android.synthetic.main.recycler_item_placeholder.view.*
 class MainAdapter(private val compositeDisposable: CompositeDisposable) :
   ListAdapter<Item, MainAdapter.VH>(object : DiffUtil.ItemCallback<Item>() {
     override fun areItemsTheSame(oldItem: Item, newItem: Item): Boolean {
-      return when (oldItem) {
-        is Item.HorizontalList -> newItem is Item.HorizontalList
-        is Item.Photo -> {
-          if (newItem is Item.Photo) {
-            newItem.photo.id == oldItem.photo.id
-          } else {
-            false
-          }
-        }
-        is Item.Placeholder -> newItem is Item.Placeholder
-      } || oldItem == newItem
+      return when {
+        oldItem is Item.Placeholder && newItem is Item.Placeholder -> true
+        oldItem is Item.HorizontalList && newItem is Item.HorizontalList -> true
+        oldItem is Item.Photo && newItem is Item.Photo -> oldItem.photo.id == newItem.photo.id
+        else -> oldItem == newItem
+      }
     }
 
     override fun areContentsTheSame(oldItem: Item, newItem: Item) = oldItem == newItem
@@ -69,6 +64,8 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
 
   override fun onBindViewHolder(holder: VH, position: Int, payloads: MutableList<Any>) {
     val payload = payloads.firstOrNull() ?: return holder.bind(getItem(position))
+    Log.d("###", "[PAYLOAD] $payload")
+
     if (payload is PlaceholderState && holder is PlaceHolderVH) {
       return holder.update(payload)
     }
@@ -131,7 +128,8 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
     }
 
     fun update(state: PlaceholderState) {
-      Log.d("###", state.toString())
+      Log.d("###", "[BIND] $state")
+
       when (state) {
         PlaceholderState.Loading -> {
           progressBar.isInvisible = false

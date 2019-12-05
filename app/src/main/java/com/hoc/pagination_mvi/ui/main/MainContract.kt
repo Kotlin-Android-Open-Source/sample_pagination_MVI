@@ -16,6 +16,11 @@ interface MainContract {
             ?.state == PlaceholderState.Idle
     }
 
+    fun shouldRetry(): Boolean {
+      return (items.singleOrNull { it is Item.Placeholder } as? Item.Placeholder)
+        ?.state is PlaceholderState.Error
+    }
+
     companion object Factory {
       @JvmStatic
       fun initial() = ViewState(
@@ -69,12 +74,18 @@ interface MainContract {
     object Loading : PlaceholderState()
     object Idle : PlaceholderState()
     data class Error(val error: Throwable) : PlaceholderState()
+
+    override fun toString() = when (this) {
+      Loading -> "PlaceholderState::Loading"
+      Idle -> "PlaceholderState::Idle"
+      is Error -> "PlaceholderState::Error($error)"
+    }
   }
 
   sealed class ViewIntent {
     object Initial : ViewIntent()
     object LoadNextPage : ViewIntent()
-    object Retry : ViewIntent()
+    object RetryLoadPage : ViewIntent()
   }
 
   sealed class PartialStateChange {

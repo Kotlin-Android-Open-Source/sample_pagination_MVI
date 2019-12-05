@@ -17,7 +17,6 @@ import com.hoc.pagination_mvi.isOrientationPortrait
 import com.hoc.pagination_mvi.ui.main.MainContract.ViewIntent
 import com.jakewharton.rxbinding3.recyclerview.scrollEvents
 import dagger.android.support.AndroidSupportInjection
-import io.reactivex.Flowable
 import io.reactivex.Observable
 import io.reactivex.ObservableSource
 import io.reactivex.disposables.CompositeDisposable
@@ -117,12 +116,17 @@ class MainFragment : Fragment() {
     mainVM.stateD.observe(viewLifecycleOwner, Observer {
       it ?: return@Observer
       adapter.submitList(it.items)
+
+      Log.d("###", "[LAST] ${it.items.lastOrNull()}")
     })
     mainVM.processIntents(
       Observable.mergeArray(
         Observable.just(ViewIntent.Initial),
         loadNextPageIntent(),
-        adapter.retryObservable.map { ViewIntent.Retry }
+        adapter
+          .retryObservable
+          .throttleFirst(500, TimeUnit.MILLISECONDS)
+          .map { ViewIntent.RetryLoadPage }
       )
     ).addTo(compositeDisposable)
   }

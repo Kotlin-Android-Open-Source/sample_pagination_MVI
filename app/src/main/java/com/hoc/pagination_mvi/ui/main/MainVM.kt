@@ -1,5 +1,6 @@
 package com.hoc.pagination_mvi.ui.main
 
+import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
@@ -19,6 +20,7 @@ import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.rx2.rxObservable
 import javax.inject.Inject
 
@@ -65,19 +67,16 @@ class MainVM @Inject constructor(
         .withLatestFrom(stateObservable)
         .filter { (_, vs) -> vs.canLoadNextPage() }
         .map { (_, vs) -> vs.photoItems.size }
-        .exhaustMap { start ->
-          rxObservable(dispatchers.main) {
-            send(PartialStateChange.PhotoNextPage.Loading)
-            try {
-              getPhotosUseCase(start = start, limit = PAGE_SIZE)
-                .map(::PhotoVS)
-                .let { PartialStateChange.PhotoNextPage.Data(it) }
-                .let { send(it) }
-            } catch (e: Exception) {
-              send(PartialStateChange.PhotoNextPage.Error(e))
-            }
-          }
-        }
+        .exhaustMap(::nextPageChanges)
+    }
+
+  private val retryLoadPageProcessor =
+    ObservableTransformer<ViewIntent.RetryLoadPage, PartialStateChange> { intents ->
+      intents
+        .withLatestFrom(stateObservable)
+        .filter { (_, vs) -> vs.shouldRetry() }
+        .map { (_, vs) -> vs.photoItems.size }
+        .exhaustMap(::nextPageChanges)
     }
 
   private val toPartialStateChange =
@@ -85,7 +84,8 @@ class MainVM @Inject constructor(
       intents.publish { shared ->
         Observable.mergeArray(
           shared.ofType<ViewIntent.Initial>().compose(initialProcessor),
-          shared.ofType<ViewIntent.LoadNextPage>().compose(nextPageProcessor)
+          shared.ofType<ViewIntent.LoadNextPage>().compose(nextPageProcessor),
+          shared.ofType<ViewIntent.RetryLoadPage>().compose(retryLoadPageProcessor)
         )
       }
     }
@@ -107,6 +107,21 @@ class MainVM @Inject constructor(
   override fun onCleared() {
     super.onCleared()
     compositeDisposable.dispose()
+  }
+
+  private fun nextPageChanges(start: Int): Observable<PartialStateChange.PhotoNextPage> {
+    return rxObservable(dispatchers.main) {
+      send(PartialStateChange.PhotoNextPage.Loading)
+      try {
+        getPhotosUseCase(start = start, limit = PAGE_SIZE)
+          .map(::PhotoVS)
+          .let { PartialStateChange.PhotoNextPage.Data(it) }
+          .let { send(it) }
+      } catch (e: Exception) {
+        delay(1_000)
+        send(PartialStateChange.PhotoNextPage.Error(e))
+      }
+    }
   }
 
   private companion object {
