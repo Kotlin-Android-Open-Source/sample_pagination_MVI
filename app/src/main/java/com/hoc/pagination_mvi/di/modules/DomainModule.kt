@@ -1,11 +1,13 @@
 package com.hoc.pagination_mvi.di.modules
 
 import com.hoc.pagination_mvi.data.PhotoRepositoryImpl
+import com.hoc.pagination_mvi.data.PostRepositoryImpl
 import com.hoc.pagination_mvi.domain.dispatchers_schedulers.CoroutinesDispatchersProvider
 import com.hoc.pagination_mvi.domain.dispatchers_schedulers.CoroutinesDispatchersProviderImpl
 import com.hoc.pagination_mvi.domain.dispatchers_schedulers.RxSchedulerProvider
 import com.hoc.pagination_mvi.domain.dispatchers_schedulers.RxSchedulerProviderImpl
 import com.hoc.pagination_mvi.domain.repository.PhotoRepository
+import com.hoc.pagination_mvi.domain.repository.PostRepository
 import dagger.Binds
 import dagger.Module
 
@@ -20,4 +22,7 @@ interface DomainModule {
 
   @Binds
   fun providePhotoRepository(photoRepositoryImpl: PhotoRepositoryImpl): PhotoRepository
+
+  @Binds
+  fun providePostRepository(postRepositoryImpl: PostRepositoryImpl): PostRepository
 }

@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
 import com.hoc.pagination_mvi.asObservable
 import com.hoc.pagination_mvi.domain.dispatchers_schedulers.CoroutinesDispatchersProvider
+import com.hoc.pagination_mvi.domain.dispatchers_schedulers.RxSchedulerProvider
 import com.hoc.pagination_mvi.domain.usecase.GetPhotosUseCase
 import com.hoc.pagination_mvi.exhaustMap
 import com.hoc.pagination_mvi.ui.main.MainContract.*
@@ -26,7 +27,8 @@ import javax.inject.Inject
 
 @ExperimentalCoroutinesApi
 class MainVM @Inject constructor(
-  private val interactor: Interactor
+  private val interactor: Interactor,
+  private val rxSchedulerProvider: RxSchedulerProvider
 ) : ViewModel() {
   private val initial = ViewState.initial()
   private val _stateD = MutableLiveData<ViewState>().apply { value = initial }
@@ -85,7 +87,7 @@ class MainVM @Inject constructor(
     intentS
       .compose(intentFilter)
       .compose(toPartialStateChange)
-      .observeOn(AndroidSchedulers.mainThread())
+      .observeOn(rxSchedulerProvider.main)
       .scan(initial) { vs, change -> change.reduce(vs) }
       .subscribe(stateS::onNext)
       .addTo(compositeDisposable)

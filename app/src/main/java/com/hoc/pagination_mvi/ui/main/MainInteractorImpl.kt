@@ -1,7 +1,9 @@
 package com.hoc.pagination_mvi.ui.main
 
+import com.hoc.pagination_mvi.di.ApplicationScope
 import com.hoc.pagination_mvi.domain.dispatchers_schedulers.CoroutinesDispatchersProvider
 import com.hoc.pagination_mvi.domain.usecase.GetPhotosUseCase
+import com.hoc.pagination_mvi.domain.usecase.GetPostsUseCase
 import com.hoc.pagination_mvi.ui.main.MainContract.PhotoVS
 import io.reactivex.Observable
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -9,9 +11,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.rx2.rxObservable
 import javax.inject.Inject
 
+@ApplicationScope
 @ExperimentalCoroutinesApi
 class MainInteractorImpl @Inject constructor(
   private val getPhotosUseCase: GetPhotosUseCase,
+  private val getPostsUseCase: GetPostsUseCase,
   private val dispatchers: CoroutinesDispatchersProvider
 ) : MainContract.Interactor {
   override fun photoNextPageChanges(
