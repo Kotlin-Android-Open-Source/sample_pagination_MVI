@@ -26,8 +26,7 @@ import javax.inject.Inject
 
 @ExperimentalCoroutinesApi
 class MainVM @Inject constructor(
-  private val getPhotosUseCase: GetPhotosUseCase,
-  private val dispatchers: CoroutinesDispatchersProvider
+  private val interactor: Interactor
 ) : ViewModel() {
   private val initial = ViewState.initial()
   private val _stateD = MutableLiveData<ViewState>().apply { value = initial }
@@ -46,19 +45,7 @@ class MainVM @Inject constructor(
       intents
         .withLatestFrom(stateObservable)
         .filter { (_, vs) -> vs.photoItems.isEmpty() }
-        .flatMap {
-          rxObservable(dispatchers.main) {
-            send(PartialStateChange.PhotoFirstPage.Loading)
-            try {
-              getPhotosUseCase(start = 0, limit = PAGE_SIZE)
-                .map(::PhotoVS)
-                .let { PartialStateChange.PhotoFirstPage.Data(it) }
-                .let { send(it) }
-            } catch (e: Exception) {
-              send(PartialStateChange.PhotoFirstPage.Error(e))
-            }
-          }
-        }
+        .flatMap { interactor.photoFirstPageChanges(limit = PAGE_SIZE) }
     }
 
   private val nextPageProcessor =
@@ -67,7 +54,7 @@ class MainVM @Inject constructor(
         .withLatestFrom(stateObservable)
         .filter { (_, vs) -> vs.canLoadNextPage() }
         .map { (_, vs) -> vs.photoItems.size }
-        .exhaustMap(::nextPageChanges)
+        .exhaustMap { interactor.photoNextPageChanges(start = it, limit = PAGE_SIZE) }
     }
 
   private val retryLoadPageProcessor =
@@ -76,7 +63,7 @@ class MainVM @Inject constructor(
         .withLatestFrom(stateObservable)
         .filter { (_, vs) -> vs.shouldRetry() }
         .map { (_, vs) -> vs.photoItems.size }
-        .exhaustMap(::nextPageChanges)
+        .exhaustMap { interactor.photoNextPageChanges(start = it, limit = PAGE_SIZE) }
     }
 
   private val toPartialStateChange =
@@ -107,21 +94,6 @@ class MainVM @Inject constructor(
   override fun onCleared() {
     super.onCleared()
     compositeDisposable.dispose()
-  }
-
-  private fun nextPageChanges(start: Int): Observable<PartialStateChange.PhotoNextPage> {
-    return rxObservable(dispatchers.main) {
-      send(PartialStateChange.PhotoNextPage.Loading)
-      try {
-        getPhotosUseCase(start = start, limit = PAGE_SIZE)
-          .map(::PhotoVS)
-          .let { PartialStateChange.PhotoNextPage.Data(it) }
-          .let { send(it) }
-      } catch (e: Exception) {
-        delay(1_000)
-        send(PartialStateChange.PhotoNextPage.Error(e))
-      }
-    }
   }
 
   private companion object {

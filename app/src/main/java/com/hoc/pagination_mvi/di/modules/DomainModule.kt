@@ -18,7 +18,6 @@ interface DomainModule {
   @Binds
   fun provideCoroutinesDispatchersProvider(coroutinesDispatchersProviderImpl: CoroutinesDispatchersProviderImpl): CoroutinesDispatchersProvider
 
-
   @Binds
   fun providePhotoRepository(photoRepositoryImpl: PhotoRepositoryImpl): PhotoRepository
 }

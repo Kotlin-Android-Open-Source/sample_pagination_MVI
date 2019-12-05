@@ -2,6 +2,7 @@ package com.hoc.pagination_mvi.ui.main
 
 import androidx.annotation.LayoutRes
 import com.hoc.pagination_mvi.R
+import io.reactivex.Observable
 import com.hoc.pagination_mvi.domain.entity.Photo as PhotoDomain
 
 interface MainContract {
@@ -157,5 +158,10 @@ interface MainContract {
 
   sealed class SingleEvent {
 
+  }
+
+  interface Interactor {
+    fun photoNextPageChanges(start: Int, limit: Int): Observable<PartialStateChange.PhotoNextPage>
+    fun photoFirstPageChanges(limit: Int): Observable<PartialStateChange.PhotoFirstPage>
   }
 }
