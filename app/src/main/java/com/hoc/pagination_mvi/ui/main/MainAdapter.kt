@@ -6,46 +6,49 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.annotation.LayoutRes
 import androidx.core.view.isInvisible
-import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import coil.api.load
 import com.hoc.pagination_mvi.R
 import com.hoc.pagination_mvi.asObservable
-import com.hoc.pagination_mvi.ui.main.MainContract.*
+import com.hoc.pagination_mvi.ui.main.MainContract.Item
+import com.hoc.pagination_mvi.ui.main.MainContract.PlaceholderState
 import com.jakewharton.rxbinding3.view.clicks
 import com.jakewharton.rxbinding3.view.detaches
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
 import io.reactivex.rxkotlin.subscribeBy
 import io.reactivex.subjects.PublishSubject
+import kotlinx.android.synthetic.main.recycler_item_horizontal_list.view.*
 import kotlinx.android.synthetic.main.recycler_item_photo.view.*
 import kotlinx.android.synthetic.main.recycler_item_placeholder.view.*
 
+private object DiffUtilItemCallback : DiffUtil.ItemCallback<Item>() {
+  override fun areItemsTheSame(oldItem: Item, newItem: Item): Boolean {
+    return when {
+      oldItem is Item.Placeholder && newItem is Item.Placeholder -> true
+      oldItem is Item.HorizontalList && newItem is Item.HorizontalList -> true
+      oldItem is Item.Photo && newItem is Item.Photo -> oldItem.photo.id == newItem.photo.id
+      else -> oldItem == newItem
+    }
+  }
+
+  override fun areContentsTheSame(oldItem: Item, newItem: Item) = oldItem == newItem
+
+  override fun getChangePayload(oldItem: Item, newItem: Item): Any? {
+    return when {
+      oldItem is Item.Placeholder && newItem is Item.Placeholder -> newItem.state
+      oldItem is Item.HorizontalList && newItem is Item.HorizontalList -> newItem
+      oldItem is Item.Photo && newItem is Item.Photo -> newItem.photo
+      else -> null
+    }
+  }
+}
 
 class MainAdapter(private val compositeDisposable: CompositeDisposable) :
-  ListAdapter<Item, MainAdapter.VH>(object : DiffUtil.ItemCallback<Item>() {
-    override fun areItemsTheSame(oldItem: Item, newItem: Item): Boolean {
-      return when {
-        oldItem is Item.Placeholder && newItem is Item.Placeholder -> true
-        oldItem is Item.HorizontalList && newItem is Item.HorizontalList -> true
-        oldItem is Item.Photo && newItem is Item.Photo -> oldItem.photo.id == newItem.photo.id
-        else -> oldItem == newItem
-      }
-    }
-
-    override fun areContentsTheSame(oldItem: Item, newItem: Item) = oldItem == newItem
-
-    override fun getChangePayload(oldItem: Item, newItem: Item): Any? {
-      return when {
-        oldItem is Item.Placeholder && newItem is Item.Placeholder -> newItem.state
-        oldItem is Item.HorizontalList && newItem is Item.HorizontalList -> newItem
-        oldItem is Item.Photo && newItem is Item.Photo -> newItem.photo
-        else -> null
-      }
-    }
-  }) {
+  ListAdapter<Item, MainAdapter.VH>(DiffUtilItemCallback) {
 
   private val retryS = PublishSubject.create<Unit>()
   val retryObservable get() = retryS.asObservable()
@@ -63,17 +66,14 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
   override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
 
   override fun onBindViewHolder(holder: VH, position: Int, payloads: MutableList<Any>) {
-    val payload = payloads.firstOrNull() ?: return holder.bind(getItem(position))
-    Log.d("###", "[PAYLOAD] $payload")
-
-    if (payload is PlaceholderState && holder is PlaceHolderVH) {
-      return holder.update(payload)
-    }
-    if (payload is Item.HorizontalList && holder is HorizontalListVH) {
-      return holder.update(payload)
-    }
-    if (payload is Item.Photo && holder is PhotoVH) {
-      return holder.update(payload)
+    if (payloads.isEmpty()) return holder.bind(getItem(position))
+    payloads.forEach { payload ->
+      Log.d("###", "[PAYLOAD] $payload")
+      when {
+        payload is PlaceholderState && holder is PlaceHolderVH -> holder.update(payload)
+        payload is Item.HorizontalList && holder is HorizontalListVH -> holder.update(payload)
+        payload is Item.Photo && holder is PhotoVH -> holder.update(payload)
+      }
     }
   }
 
@@ -152,13 +152,33 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
   }
 
   private class HorizontalListVH(itemView: View) : VH(itemView) {
+    private val recycler = itemView.recycler_horizontal!!
+    private val progressBar = itemView.progress_bar_horizontal!!
+    private val textError = itemView.text_error_horizontal!!
+    private val buttonRetry = itemView.button_retry_horizontal!!
+    private val adapter = HorizontalAdapter()
+
+    init {
+      recycler.run {
+        setHasFixedSize(true)
+        adapter = this@HorizontalListVH.adapter
+        layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false)
+      }
+    }
+
     override fun bind(item: Item) {
       if (item !is Item.HorizontalList) return
       update(item)
     }
 
     fun update(item: Item.HorizontalList) {
-//TODO
+      progressBar.isInvisible = !item.isLoading
+
+      textError.isInvisible = item.error == null
+      buttonRetry.isInvisible = item.error == null
+      textError.text = item.error?.message
+
+      adapter.submitList(item.items)
     }
   }
 }

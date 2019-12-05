@@ -5,6 +5,7 @@ import com.hoc.pagination_mvi.domain.dispatchers_schedulers.CoroutinesDispatcher
 import com.hoc.pagination_mvi.domain.usecase.GetPhotosUseCase
 import com.hoc.pagination_mvi.domain.usecase.GetPostsUseCase
 import com.hoc.pagination_mvi.ui.main.MainContract.PhotoVS
+import com.hoc.pagination_mvi.ui.main.MainContract.PostVS
 import io.reactivex.Observable
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
@@ -47,6 +48,21 @@ class MainInteractorImpl @Inject constructor(
       } catch (e: Exception) {
         delay(500)
         send(MainContract.PartialStateChange.PhotoFirstPage.Error(e))
+      }
+    }
+  }
+
+  override fun postFirstPageChanges(limit: Int): Observable<MainContract.PartialStateChange.PostFirstPage> {
+    return rxObservable(dispatchers.main) {
+      send(MainContract.PartialStateChange.PostFirstPage.Loading)
+      try {
+        getPostsUseCase(start = 0, limit = limit)
+          .map(::PostVS)
+          .let { MainContract.PartialStateChange.PostFirstPage.Data(it) }
+          .let { send(it) }
+      } catch (e: Exception) {
+        delay(500)
+        send(MainContract.PartialStateChange.PostFirstPage.Error(e))
       }
     }
   }

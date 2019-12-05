@@ -1,18 +1,14 @@
 package com.hoc.pagination_mvi.ui.main
 
-import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
 import com.hoc.pagination_mvi.asObservable
-import com.hoc.pagination_mvi.domain.dispatchers_schedulers.CoroutinesDispatchersProvider
 import com.hoc.pagination_mvi.domain.dispatchers_schedulers.RxSchedulerProvider
-import com.hoc.pagination_mvi.domain.usecase.GetPhotosUseCase
 import com.hoc.pagination_mvi.exhaustMap
 import com.hoc.pagination_mvi.ui.main.MainContract.*
 import io.reactivex.Observable
 import io.reactivex.ObservableTransformer
-import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
 import io.reactivex.rxkotlin.ofType
@@ -21,8 +17,6 @@ import io.reactivex.rxkotlin.withLatestFrom
 import io.reactivex.subjects.BehaviorSubject
 import io.reactivex.subjects.PublishSubject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.rx2.rxObservable
 import javax.inject.Inject
 
 @ExperimentalCoroutinesApi
@@ -47,7 +41,12 @@ class MainVM @Inject constructor(
       intents
         .withLatestFrom(stateObservable)
         .filter { (_, vs) -> vs.photoItems.isEmpty() }
-        .flatMap { interactor.photoFirstPageChanges(limit = PAGE_SIZE) }
+        .flatMap {
+          Observable.mergeArray(
+            interactor.photoFirstPageChanges(limit = PHOTO_PAGE_SIZE),
+            interactor.postFirstPageChanges(limit = POST_PAGE_SIZE)
+          )
+        }
     }
 
   private val nextPageProcessor =
@@ -56,7 +55,7 @@ class MainVM @Inject constructor(
         .withLatestFrom(stateObservable)
         .filter { (_, vs) -> vs.canLoadNextPage() }
         .map { (_, vs) -> vs.photoItems.size }
-        .exhaustMap { interactor.photoNextPageChanges(start = it, limit = PAGE_SIZE) }
+        .exhaustMap { interactor.photoNextPageChanges(start = it, limit = PHOTO_PAGE_SIZE) }
     }
 
   private val retryLoadPageProcessor =
@@ -65,7 +64,7 @@ class MainVM @Inject constructor(
         .withLatestFrom(stateObservable)
         .filter { (_, vs) -> vs.shouldRetry() }
         .map { (_, vs) -> vs.photoItems.size }
-        .exhaustMap { interactor.photoNextPageChanges(start = it, limit = PAGE_SIZE) }
+        .exhaustMap { interactor.photoNextPageChanges(start = it, limit = PHOTO_PAGE_SIZE) }
     }
 
   private val toPartialStateChange =
@@ -107,7 +106,8 @@ class MainVM @Inject constructor(
         )
       }
     }
-    const val PAGE_SIZE = 20
+    const val PHOTO_PAGE_SIZE = 20
+    const val POST_PAGE_SIZE = 10
   }
 }
 

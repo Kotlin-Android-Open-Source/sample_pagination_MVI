@@ -2,8 +2,10 @@ package com.hoc.pagination_mvi.ui.main
 
 import androidx.annotation.LayoutRes
 import com.hoc.pagination_mvi.R
+import com.hoc.pagination_mvi.ui.main.MainContract.Item.HorizontalList.HorizontalItem
 import io.reactivex.Observable
 import com.hoc.pagination_mvi.domain.entity.Photo as PhotoDomain
+import com.hoc.pagination_mvi.domain.entity.Post as PostDomain
 
 interface MainContract {
   data class ViewState(
@@ -29,7 +31,8 @@ interface MainContract {
           Item.HorizontalList(
             items = emptyList(),
             isLoading = true,
-            error = null
+            error = null,
+            postItems = emptyList()
           )
         ),
         photoItems = emptyList()
@@ -42,12 +45,16 @@ interface MainContract {
     data class HorizontalList(
       val items: List<HorizontalItem>,
       val isLoading: Boolean,
-      val error: Throwable?
+      val error: Throwable?,
+      val postItems: List<HorizontalItem.Post>
     ) : Item(R.layout.recycler_item_horizontal_list) {
-      sealed class HorizontalItem {
-        data class Item(val s: String) : HorizontalItem()
-        data class Placeholder(val state: PlaceholderState) : HorizontalItem()
+
+      sealed class HorizontalItem(@LayoutRes val viewType: Int) {
+        data class Post(val post: PostVS) : HorizontalItem(TODO())
+
+        data class Placeholder(val state: PlaceholderState) : HorizontalItem(TODO())
       }
+
     }
 
     data class Photo(val photo: PhotoVS) : Item(R.layout.recycler_item_photo)
@@ -68,6 +75,20 @@ interface MainContract {
       thumbnailUrl = domain.thumbnailUrl,
       title = domain.title,
       url = domain.url
+    )
+  }
+
+  data class PostVS(
+    val body: String,
+    val id: Int,
+    val title: String,
+    val userId: Int
+  ) {
+    constructor(domain: PostDomain) : this(
+      body = domain.body,
+      userId = domain.userId,
+      id = domain.id,
+      title = domain.title
     )
   }
 
@@ -154,6 +175,66 @@ interface MainContract {
         }
       }
     }
+
+    sealed class PostFirstPage : PartialStateChange() {
+      data class Data(val posts: List<PostVS>) : PostFirstPage()
+      data class Error(val error: Throwable) : PostFirstPage()
+      object Loading : PostFirstPage()
+
+      override fun reduce(vs: ViewState): ViewState {
+        return when (this) {
+          is Data -> {
+            vs.copy(
+              items = vs.items.map {
+                if (it is Item.HorizontalList) {
+                  val postItems = this.posts.map { HorizontalItem.Post(it) }
+                  it.copy(
+                    items = postItems + HorizontalItem.Placeholder(PlaceholderState.Idle),
+                    isLoading = false,
+                    error = null,
+                    postItems = postItems
+                  )
+                } else {
+                  it
+                }
+              }
+            )
+          }
+          is Error -> {
+            vs.copy(
+              items = vs.items.map {
+                if (it is Item.HorizontalList) {
+                  it.copy(
+                    items = emptyList(),
+                    isLoading = false,
+                    error = error,
+                    postItems = emptyList()
+                  )
+                } else {
+                  it
+                }
+              }
+            )
+          }
+          Loading -> {
+            vs.copy(
+              items = vs.items.map {
+                if (it is Item.HorizontalList) {
+                  it.copy(
+                    items = emptyList(),
+                    isLoading = true,
+                    error = null,
+                    postItems = emptyList()
+                  )
+                } else {
+                  it
+                }
+              }
+            )
+          }
+        }
+      }
+    }
   }
 
   sealed class SingleEvent {
@@ -163,5 +244,7 @@ interface MainContract {
   interface Interactor {
     fun photoNextPageChanges(start: Int, limit: Int): Observable<PartialStateChange.PhotoNextPage>
     fun photoFirstPageChanges(limit: Int): Observable<PartialStateChange.PhotoFirstPage>
+
+    fun postFirstPageChanges(limit: Int): Observable<PartialStateChange.PostFirstPage>
   }
 }
