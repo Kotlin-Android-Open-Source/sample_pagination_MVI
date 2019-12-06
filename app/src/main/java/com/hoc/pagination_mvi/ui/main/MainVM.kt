@@ -153,6 +153,10 @@ class MainVM @Inject constructor(
             is PostNextPage.Data -> if (change.posts.isEmpty()) singleEventS.onNext(SingleEvent.HasReachedMaxHorizontal)
             is PostNextPage.Error -> singleEventS.onNext(SingleEvent.GetPostsFailure(change.error))
             PostNextPage.Loading -> Unit
+            ///
+            is Refresh.Success -> singleEventS.onNext(SingleEvent.RefreshSuccess)
+            is Refresh.Error -> singleEventS.onNext(SingleEvent.RefreshFailure(change.error))
+            Refresh.Refreshing -> Unit
           }
         }
     }

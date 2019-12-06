@@ -94,22 +94,21 @@ class MainInteractorImpl @Inject constructor(
   ): Observable<Refresh> {
     return rxObservable(dispatchers.main) {
       send(Refresh.Refreshing)
+      try {
+        coroutineScope {
+          val async1 = async { getPostsUseCase(limit = limitPost, start = 0) }
+          val async2 = async { getPhotosUseCase(limit = limitPhoto, start = 0) }
 
-      coroutineScope {
-        val async1 = async { getPostsUseCase(limit = limitPost, start = 0) }
-        val async2 = async { getPhotosUseCase(limit = limitPhoto, start = 0) }
-
-        try {
           send(
             Refresh.Success(
               posts = async1.await().map(::PostVS),
               photos = async2.await().map(::PhotoVS)
             )
           )
-        } catch (e: Exception) {
-          delay(500)
-          send(Refresh.Error(e))
         }
+      } catch (e: Exception) {
+        delay(500)
+        send(Refresh.Error(e))
       }
     }
   }
