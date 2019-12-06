@@ -40,6 +40,16 @@ interface MainContract {
       return horizontalList.postItems.size
     }
 
+    fun shouldRetryHorizontal(): Boolean {
+      val horizontalList =
+        items.singleOrNull { it is Item.HorizontalList } as? Item.HorizontalList ?: return false
+      return !horizontalList.isLoading &&
+          horizontalList.error == null &&
+          horizontalList.postItems.isNotEmpty() &&
+          (horizontalList.items.singleOrNull { it is HorizontalItem.Placeholder } as? HorizontalItem.Placeholder)
+            ?.state is PlaceholderState.Error
+    }
+
     companion object Factory {
       @JvmStatic
       fun initial() = ViewState(

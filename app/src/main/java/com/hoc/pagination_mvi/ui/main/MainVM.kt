@@ -81,6 +81,15 @@ class MainVM @Inject constructor(
         .exhaustMap { interactor.postNextPageChanges(start = it, limit = POST_PAGE_SIZE) }
     }
 
+  private val retryLoadPageHorizontalProcessor =
+    ObservableTransformer<ViewIntent.RetryLoadPageHorizontal, PartialStateChange> { intents ->
+      intents
+        .withLatestFrom(stateObservable)
+        .filter { (_, vs) -> vs.shouldRetryHorizontal() }
+        .map { (_, vs) -> vs.getHorizontalListCount() }
+        .exhaustMap { interactor.postNextPageChanges(start = it, limit = POST_PAGE_SIZE) }
+    }
+
   private val toPartialStateChange =
     ObservableTransformer<ViewIntent, PartialStateChange> { intents ->
       intents
@@ -91,6 +100,9 @@ class MainVM @Inject constructor(
             shared.ofType<ViewIntent.RetryLoadPage>().compose(retryLoadPageProcessor),
             shared.ofType<ViewIntent.LoadNextPageHorizontal>().compose(
               loadNextPageHorizontalProcessor
+            ),
+            shared.ofType<ViewIntent.RetryLoadPageHorizontal>().compose(
+              retryLoadPageHorizontalProcessor
             )
           )
         }

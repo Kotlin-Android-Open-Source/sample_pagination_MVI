@@ -58,6 +58,9 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
   private val loadNextPageHorizontalS = PublishSubject.create<Unit>()
   val loadNextPageHorizontalObservable get() = loadNextPageHorizontalS.asObservable()
 
+  private val retryHorizontalS = PublishSubject.create<Unit>()
+  val retryHorizontalObservable get() = retryHorizontalS.asObservable()
+
   override fun onCreateViewHolder(parent: ViewGroup, @LayoutRes viewType: Int): VH {
     val itemView = LayoutInflater.from(parent.context).inflate(viewType, parent, false)
     return when (viewType) {
@@ -161,7 +164,7 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
     private val progressBar = itemView.progress_bar_horizontal!!
     private val textError = itemView.text_error_horizontal!!
     private val buttonRetry = itemView.button_retry_horizontal!!
-    private val adapter = HorizontalAdapter()
+    private val adapter = HorizontalAdapter(compositeDisposable)
     private val visibleThreshold get() = 2
 
     init {
@@ -181,6 +184,11 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
           }
         })
       }
+
+      adapter
+        .retryObservable
+        .subscribe(retryHorizontalS::onNext)
+        .addTo(compositeDisposable)
 
       recycler
         .scrollEvents()

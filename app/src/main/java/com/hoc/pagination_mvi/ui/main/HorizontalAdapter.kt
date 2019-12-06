@@ -9,9 +9,16 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.hoc.pagination_mvi.R
+import com.hoc.pagination_mvi.asObservable
 import com.hoc.pagination_mvi.ui.main.MainContract.Item.HorizontalList.HorizontalItem
 import com.hoc.pagination_mvi.ui.main.MainContract.PlaceholderState
 import com.hoc.pagination_mvi.ui.main.MainContract.PostVS
+import com.jakewharton.rxbinding3.view.clicks
+import com.jakewharton.rxbinding3.view.detaches
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.rxkotlin.addTo
+import io.reactivex.rxkotlin.subscribeBy
+import io.reactivex.subjects.PublishSubject
 import kotlinx.android.synthetic.main.recycler_item_horizontal_placeholder.view.*
 import kotlinx.android.synthetic.main.recycler_item_horizontal_post.view.*
 
@@ -36,14 +43,19 @@ private object HorizontalItemItemCallback : DiffUtil.ItemCallback<HorizontalItem
   }
 }
 
-class HorizontalAdapter :
+class HorizontalAdapter(
+  private val compositeDisposable: CompositeDisposable
+) :
   ListAdapter<HorizontalItem, HorizontalAdapter.VH>(HorizontalItemItemCallback) {
+
+  private val retryS = PublishSubject.create<Unit>()
+  val retryObservable get() = retryS.asObservable()
 
   override fun onCreateViewHolder(parent: ViewGroup, @LayoutRes viewType: Int): VH {
     val itemView = LayoutInflater.from(parent.context).inflate(viewType, parent, false)
     return when (viewType) {
       R.layout.recycler_item_horizontal_post -> PostVH(itemView)
-      R.layout.recycler_item_horizontal_placeholder -> PlaceholderVH(itemView)
+      R.layout.recycler_item_horizontal_placeholder -> PlaceholderVH(itemView, parent)
       else -> error("Unknown viewType=$viewType")
     }
   }
@@ -82,11 +94,26 @@ class HorizontalAdapter :
     }
   }
 
-  private class PlaceholderVH(itemView: View) : VH(itemView) {
+  private inner class PlaceholderVH(itemView: View, parent: ViewGroup) : VH(itemView) {
     private val progressBar = itemView.progress_bar!!
     private val textError = itemView.text_error!!
     private val buttonRetry = itemView.button_retry!!
 
+    init {
+      buttonRetry
+        .clicks()
+        .takeUntil(parent.detaches())
+        .filter {
+          val position = adapterPosition
+          if (position == RecyclerView.NO_POSITION) {
+            false
+          } else {
+            (getItem(position) as? HorizontalItem.Placeholder)?.state is PlaceholderState.Error
+          }
+        }
+        .subscribeBy { retryS.onNext(Unit) }
+        .addTo(compositeDisposable)
+    }
 
     override fun bind(item: HorizontalItem) {
       if (item !is HorizontalItem.Placeholder) return
