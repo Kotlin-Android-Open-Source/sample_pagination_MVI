@@ -58,6 +58,9 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
   private val loadNextPageHorizontalS = PublishSubject.create<Unit>()
   val loadNextPageHorizontalObservable get() = loadNextPageHorizontalS.asObservable()
 
+  private val retryNextPageHorizontalS = PublishSubject.create<Unit>()
+  val retryNextPageHorizontalObservable get() = retryNextPageHorizontalS.asObservable()
+
   private val retryHorizontalS = PublishSubject.create<Unit>()
   val retryHorizontalObservable get() = retryHorizontalS.asObservable()
 
@@ -186,8 +189,22 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
       }
 
       adapter
-        .retryObservable
-        .subscribe(retryHorizontalS::onNext)
+        .retryNextPageObservable
+        .subscribe(retryNextPageHorizontalS::onNext)
+        .addTo(compositeDisposable)
+
+      buttonRetry
+        .clicks()
+        .takeUntil(parent.detaches())
+        .filter {
+          val position = adapterPosition
+          if (position == RecyclerView.NO_POSITION) {
+            false
+          } else {
+            (getItem(position) as? Item.HorizontalList)?.shouldRetry() == true
+          }
+        }
+        .subscribeBy { retryHorizontalS.onNext(Unit) }
         .addTo(compositeDisposable)
 
       recycler

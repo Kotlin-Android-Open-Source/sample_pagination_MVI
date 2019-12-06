@@ -40,7 +40,7 @@ interface MainContract {
       return horizontalList.postItems.size
     }
 
-    fun shouldRetryHorizontal(): Boolean {
+    fun shouldRetryNextPageHorizontal(): Boolean {
       val horizontalList =
         items.singleOrNull { it is Item.HorizontalList } as? Item.HorizontalList ?: return false
       return !horizontalList.isLoading &&
@@ -48,6 +48,12 @@ interface MainContract {
           horizontalList.postItems.isNotEmpty() &&
           (horizontalList.items.singleOrNull { it is HorizontalItem.Placeholder } as? HorizontalItem.Placeholder)
             ?.state is PlaceholderState.Error
+    }
+
+    fun shouldRetryHorizontal(): Boolean {
+      val horizontalList =
+        items.singleOrNull { it is Item.HorizontalList } as? Item.HorizontalList ?: return false
+      return horizontalList.shouldRetry()
     }
 
     companion object Factory {
@@ -74,6 +80,10 @@ interface MainContract {
       val error: Throwable?,
       val postItems: List<HorizontalItem.Post>
     ) : Item(R.layout.recycler_item_horizontal_list) {
+
+      fun shouldRetry(): Boolean {
+        return !isLoading && error !== null && items.isEmpty()
+      }
 
       sealed class HorizontalItem(@LayoutRes val viewType: Int) {
         data class Post(val post: PostVS) : HorizontalItem(R.layout.recycler_item_horizontal_post)
@@ -144,6 +154,8 @@ interface MainContract {
     object LoadNextPageHorizontal : ViewIntent()
 
     object RetryLoadPageHorizontal : ViewIntent()
+
+    object RetryHorizontal : ViewIntent()
   }
 
   sealed class PartialStateChange {

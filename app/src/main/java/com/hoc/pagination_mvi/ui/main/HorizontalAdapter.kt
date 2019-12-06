@@ -14,7 +14,6 @@ import com.hoc.pagination_mvi.ui.main.MainContract.Item.HorizontalList.Horizonta
 import com.hoc.pagination_mvi.ui.main.MainContract.PlaceholderState
 import com.hoc.pagination_mvi.ui.main.MainContract.PostVS
 import com.jakewharton.rxbinding3.view.clicks
-import com.jakewharton.rxbinding3.view.detaches
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
 import io.reactivex.rxkotlin.subscribeBy
@@ -48,14 +47,14 @@ class HorizontalAdapter(
 ) :
   ListAdapter<HorizontalItem, HorizontalAdapter.VH>(HorizontalItemItemCallback) {
 
-  private val retryS = PublishSubject.create<Unit>()
-  val retryObservable get() = retryS.asObservable()
+  private val retryNextPageS = PublishSubject.create<Unit>()
+  val retryNextPageObservable get() = retryNextPageS.asObservable()
 
   override fun onCreateViewHolder(parent: ViewGroup, @LayoutRes viewType: Int): VH {
     val itemView = LayoutInflater.from(parent.context).inflate(viewType, parent, false)
     return when (viewType) {
       R.layout.recycler_item_horizontal_post -> PostVH(itemView)
-      R.layout.recycler_item_horizontal_placeholder -> PlaceholderVH(itemView, parent)
+      R.layout.recycler_item_horizontal_placeholder -> PlaceholderVH(itemView)
       else -> error("Unknown viewType=$viewType")
     }
   }
@@ -94,7 +93,7 @@ class HorizontalAdapter(
     }
   }
 
-  private inner class PlaceholderVH(itemView: View, parent: ViewGroup) : VH(itemView) {
+  private inner class PlaceholderVH(itemView: View) : VH(itemView) {
     private val progressBar = itemView.progress_bar!!
     private val textError = itemView.text_error!!
     private val buttonRetry = itemView.button_retry!!
@@ -102,7 +101,6 @@ class HorizontalAdapter(
     init {
       buttonRetry
         .clicks()
-        .takeUntil(parent.detaches())
         .filter {
           val position = adapterPosition
           if (position == RecyclerView.NO_POSITION) {
@@ -111,7 +109,7 @@ class HorizontalAdapter(
             (getItem(position) as? HorizontalItem.Placeholder)?.state is PlaceholderState.Error
           }
         }
-        .subscribeBy { retryS.onNext(Unit) }
+        .subscribeBy { retryNextPageS.onNext(Unit) }
         .addTo(compositeDisposable)
     }
 
