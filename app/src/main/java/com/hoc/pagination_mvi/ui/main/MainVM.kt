@@ -7,6 +7,7 @@ import com.hoc.pagination_mvi.asObservable
 import com.hoc.pagination_mvi.domain.dispatchers_schedulers.RxSchedulerProvider
 import com.hoc.pagination_mvi.exhaustMap
 import com.hoc.pagination_mvi.ui.main.MainContract.*
+import com.hoc.pagination_mvi.ui.main.MainContract.PartialStateChange.*
 import io.reactivex.Observable
 import io.reactivex.ObservableTransformer
 import io.reactivex.disposables.CompositeDisposable
@@ -25,14 +26,18 @@ class MainVM @Inject constructor(
   private val rxSchedulerProvider: RxSchedulerProvider
 ) : ViewModel() {
   private val initial = ViewState.initial()
+
   private val _stateD = MutableLiveData<ViewState>().apply { value = initial }
   private val stateS = BehaviorSubject.createDefault(initial)
-
   private val stateObservable get() = stateS.asObservable()
+
   private val intentS = PublishSubject.create<ViewIntent>()
+  private val singleEventS = PublishSubject.create<SingleEvent>()
   private val compositeDisposable = CompositeDisposable()
 
+  /// Expose view state live data & single event observable
   val stateD get() = _stateD.distinctUntilChanged()
+  val singleEventObservable get() = singleEventS.asObservable()
 
   fun processIntents(intents: Observable<ViewIntent>) = intents.subscribe(intentS::onNext)!!
 
@@ -78,14 +83,43 @@ class MainVM @Inject constructor(
 
   private val toPartialStateChange =
     ObservableTransformer<ViewIntent, PartialStateChange> { intents ->
-      intents.publish { shared ->
-        Observable.mergeArray(
-          shared.ofType<ViewIntent.Initial>().compose(initialProcessor),
-          shared.ofType<ViewIntent.LoadNextPage>().compose(nextPageProcessor),
-          shared.ofType<ViewIntent.RetryLoadPage>().compose(retryLoadPageProcessor),
-          shared.ofType<ViewIntent.LoadNextPageHorizontal>().compose(loadNextPageHorizontalProcessor)
-        )
-      }
+      intents
+        .publish { shared ->
+          Observable.mergeArray(
+            shared.ofType<ViewIntent.Initial>().compose(initialProcessor),
+            shared.ofType<ViewIntent.LoadNextPage>().compose(nextPageProcessor),
+            shared.ofType<ViewIntent.RetryLoadPage>().compose(retryLoadPageProcessor),
+            shared.ofType<ViewIntent.LoadNextPageHorizontal>().compose(
+              loadNextPageHorizontalProcessor
+            )
+          )
+        }
+        .compose(sendSingleEvent)
+    }
+
+  private val sendSingleEvent =
+    ObservableTransformer<PartialStateChange, PartialStateChange> { changes ->
+      changes
+        .observeOn(rxSchedulerProvider.main)
+        .doOnNext { change ->
+          when (change) {
+            is PhotoFirstPage.Data -> if (change.photos.isEmpty()) singleEventS.onNext(SingleEvent.HasReachedMax)
+            is PhotoFirstPage.Error -> singleEventS.onNext(SingleEvent.GetPhotosFailure(change.error))
+            PhotoFirstPage.Loading -> Unit
+            ///
+            is PhotoNextPage.Data -> if (change.photos.isEmpty()) singleEventS.onNext(SingleEvent.HasReachedMax)
+            is PhotoNextPage.Error -> singleEventS.onNext(SingleEvent.GetPhotosFailure(change.error))
+            PhotoNextPage.Loading -> Unit
+            ///
+            is PostFirstPage.Data -> if (change.posts.isEmpty()) singleEventS.onNext(SingleEvent.HasReachedMaxHorizontal)
+            is PostFirstPage.Error -> singleEventS.onNext(SingleEvent.GetPostsFailure(change.error))
+            PostFirstPage.Loading -> Unit
+            ///
+            is PostNextPage.Data -> if (change.posts.isEmpty()) singleEventS.onNext(SingleEvent.HasReachedMaxHorizontal)
+            is PostNextPage.Error -> singleEventS.onNext(SingleEvent.GetPostsFailure(change.error))
+            PostNextPage.Loading -> Unit
+          }
+        }
     }
 
   init {

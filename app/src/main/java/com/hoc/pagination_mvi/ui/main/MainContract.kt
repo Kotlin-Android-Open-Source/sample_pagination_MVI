@@ -123,10 +123,16 @@ interface MainContract {
 
   sealed class ViewIntent {
     object Initial : ViewIntent()
+    object Refresh : ViewIntent()
+
+    // Vertical
     object LoadNextPage : ViewIntent()
+
     object RetryLoadPage : ViewIntent()
 
+    // Horizontal
     object LoadNextPageHorizontal : ViewIntent()
+
     object RetryLoadPageHorizontal : ViewIntent()
   }
 
@@ -174,9 +180,13 @@ interface MainContract {
               vs.items.filterIsInstance<Item.Photo>() + this.photos.map { Item.Photo(it) }
 
             vs.copy(
-              items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder }
-                  + photoItems
-                  + Item.Placeholder(PlaceholderState.Idle),
+              items = vs.items.filter { it !is Item.Photo && it !is Item.Placeholder } +
+                  photoItems +
+                  if (this.photos.isNotEmpty()) {
+                    listOf(Item.Placeholder(PlaceholderState.Idle))
+                  } else {
+                    emptyList()
+                  },
               photoItems = photoItems
             )
           }
@@ -270,7 +280,11 @@ interface MainContract {
                   val postItems = item.items.filterIsInstance<HorizontalItem.Post>() +
                       this.posts.map { HorizontalItem.Post(it) }
                   item.copy(
-                    items = postItems + HorizontalItem.Placeholder(PlaceholderState.Idle),
+                    items = postItems + if (this.posts.isNotEmpty()) {
+                      listOf(HorizontalItem.Placeholder(PlaceholderState.Idle))
+                    } else {
+                      emptyList()
+                    },
                     postItems = postItems
                   )
                 } else {
@@ -315,7 +329,18 @@ interface MainContract {
   }
 
   sealed class SingleEvent {
+    object RefreshSuccess : SingleEvent()
+    data class RefreshFailure(val error: Throwable) : SingleEvent()
 
+    // Horizontal
+    data class GetPostsFailure(val error: Throwable) : SingleEvent()
+
+    object HasReachedMaxHorizontal : SingleEvent()
+
+    // Vertical
+    data class GetPhotosFailure(val error: Throwable) : SingleEvent()
+
+    object HasReachedMax : SingleEvent()
   }
 
   interface Interactor {

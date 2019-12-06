@@ -2,7 +2,6 @@ package com.hoc.pagination_mvi.ui.main
 
 import android.graphics.Rect
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,6 +13,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.hoc.pagination_mvi.R
 import com.hoc.pagination_mvi.isOrientationPortrait
+import com.hoc.pagination_mvi.toast
 import com.hoc.pagination_mvi.ui.main.MainContract.ViewIntent
 import com.jakewharton.rxbinding3.recyclerview.scrollEvents
 import dagger.android.support.AndroidSupportInjection
@@ -21,6 +21,7 @@ import io.reactivex.Observable
 import io.reactivex.ObservableSource
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.rxkotlin.addTo
+import io.reactivex.rxkotlin.subscribeBy
 import kotlinx.android.synthetic.main.fragment_main.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import java.util.concurrent.TimeUnit
@@ -114,9 +115,12 @@ class MainFragment : Fragment() {
     mainVM.stateD.observe(viewLifecycleOwner, Observer {
       it ?: return@Observer
       adapter.submitList(it.items)
-
-      Log.d("###", "[LAST] ${it.items.lastOrNull()}")
     })
+    mainVM
+      .singleEventObservable
+      .subscribeBy(onNext = ::handleSingleEvent)
+      .addTo(compositeDisposable)
+
     mainVM.processIntents(
       Observable.mergeArray(
         Observable.just(ViewIntent.Initial),
@@ -130,6 +134,35 @@ class MainFragment : Fragment() {
           .map { ViewIntent.LoadNextPageHorizontal }
       )
     ).addTo(compositeDisposable)
+  }
+
+  private fun handleSingleEvent(event: MainContract.SingleEvent) {
+    return when (event) {
+      MainContract.SingleEvent.RefreshSuccess -> {
+        toast("Refresh success")
+      }
+      is MainContract.SingleEvent.RefreshFailure -> {
+        toast(
+          "Refresh failure: ${event.error.message ?: ""}"
+        )
+      }
+      is MainContract.SingleEvent.GetPostsFailure -> {
+        toast(
+          "Get posts failure: ${event.error.message ?: ""}"
+        )
+      }
+      MainContract.SingleEvent.HasReachedMaxHorizontal -> {
+        toast("Got all posts")
+      }
+      is MainContract.SingleEvent.GetPhotosFailure -> {
+        toast(
+          "Get photos failure: ${event.error.message ?: ""}"
+        )
+      }
+      MainContract.SingleEvent.HasReachedMax -> {
+        toast("Got all photos")
+      }
+    }
   }
 
   private fun loadNextPageIntent(): ObservableSource<ViewIntent> {
