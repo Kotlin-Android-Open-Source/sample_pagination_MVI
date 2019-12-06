@@ -10,8 +10,19 @@ import com.hoc.pagination_mvi.domain.entity.Post as PostDomain
 interface MainContract {
   data class ViewState(
     val items: List<Item>,
-    val photoItems: List<Item.Photo>
+    val photoItems: List<Item.Photo>,
+    val isRefreshing: Boolean
   ) {
+
+    val enableRefresh: Boolean
+      get() {
+        val horizontalList =
+          items.singleOrNull { it is Item.HorizontalList } as? Item.HorizontalList ?: return false
+        return !horizontalList.isLoading &&
+            horizontalList.error === null &&
+            (items.singleOrNull { it is Item.Placeholder } as? Item.Placeholder)
+              ?.state == PlaceholderState.Idle
+      }
 
     fun canLoadNextPage(): Boolean {
       return photoItems.isNotEmpty() &&
@@ -67,7 +78,8 @@ interface MainContract {
             postItems = emptyList()
           )
         ),
-        photoItems = emptyList()
+        photoItems = emptyList(),
+        isRefreshing = false
       )
     }
   }
@@ -348,6 +360,25 @@ interface MainContract {
         }
       }
     }
+
+    sealed class Refresh : PartialStateChange() {
+      data class Success(val photos: List<PhotoVS>, val posts: List<PostVS>) : Refresh()
+      data class Error(val error: Throwable) : Refresh()
+      object Refreshing : Refresh()
+
+      override fun reduce(vs: ViewState): ViewState {
+        return when (this) {
+          is Success -> {
+            listOf(
+              PhotoFirstPage.Data(photos),
+              PostFirstPage.Data(posts)
+            ).fold(vs.copy(isRefreshing = false)) { acc, change -> change.reduce(acc) }
+          }
+          is Error -> vs.copy(isRefreshing = false)
+          Refreshing -> vs.copy(isRefreshing = true)
+        }
+      }
+    }
   }
 
   sealed class SingleEvent {
@@ -371,5 +402,7 @@ interface MainContract {
 
     fun postFirstPageChanges(limit: Int): Observable<PartialStateChange.PostFirstPage>
     fun postNextPageChanges(start: Int, limit: Int): Observable<PartialStateChange.PostNextPage>
+
+    fun refreshAll(limitPost: Int, limitPhoto: Int): Observable<PartialStateChange.Refresh>
   }
 }

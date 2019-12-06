@@ -2,6 +2,7 @@ package com.hoc.pagination_mvi.ui.main
 
 import android.graphics.Rect
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -17,6 +18,7 @@ import com.hoc.pagination_mvi.isOrientationPortrait
 import com.hoc.pagination_mvi.toast
 import com.hoc.pagination_mvi.ui.main.MainContract.ViewIntent
 import com.jakewharton.rxbinding3.recyclerview.scrollEvents
+import com.jakewharton.rxbinding3.swiperefreshlayout.refreshes
 import dagger.android.support.AndroidSupportInjection
 import io.reactivex.Observable
 import io.reactivex.ObservableSource
@@ -124,9 +126,18 @@ class MainFragment : Fragment() {
   }
 
   private fun bindVM() {
-    mainVM.stateD.observe(viewLifecycleOwner, Observer {
-      it ?: return@Observer
-      adapter.submitList(it.items)
+    mainVM.stateD.observe(viewLifecycleOwner, Observer { vs ->
+      vs ?: return@Observer
+      Log.d("###", "${vs.isRefreshing} ${vs.enableRefresh}")
+
+      adapter.submitList(vs.items)
+
+      if (vs.isRefreshing) {
+        swipe_refresh.post { swipe_refresh.isRefreshing = true }
+      } else {
+        swipe_refresh.isRefreshing = false
+      }
+      swipe_refresh.isEnabled = vs.enableRefresh
     })
     mainVM
       .singleEventObservable
@@ -137,6 +148,7 @@ class MainFragment : Fragment() {
       Observable.mergeArray(
         Observable.just(ViewIntent.Initial),
         loadNextPageIntent(),
+        swipe_refresh.refreshes().map { ViewIntent.Refresh },
         adapter
           .retryObservable
           .throttleFirst(500, TimeUnit.MILLISECONDS)

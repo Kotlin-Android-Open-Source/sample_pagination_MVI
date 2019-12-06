@@ -98,6 +98,19 @@ class MainVM @Inject constructor(
         .exhaustMap { interactor.postFirstPageChanges(limit = POST_PAGE_SIZE) }
     }
 
+  private val refreshProcessor =
+    ObservableTransformer<ViewIntent.Refresh, PartialStateChange> { intents ->
+      intents
+        .withLatestFrom(stateObservable)
+        .filter { (_, vs) -> vs.enableRefresh }
+        .exhaustMap {
+          interactor.refreshAll(
+            limitPhoto = PHOTO_PAGE_SIZE,
+            limitPost = POST_PAGE_SIZE
+          )
+        }
+    }
+
   private val toPartialStateChange =
     ObservableTransformer<ViewIntent, PartialStateChange> { intents ->
       intents
@@ -112,7 +125,8 @@ class MainVM @Inject constructor(
             shared.ofType<ViewIntent.RetryLoadPageHorizontal>().compose(
               retryLoadPageHorizontalProcessor
             ),
-            shared.ofType<ViewIntent.RetryHorizontal>().compose(retryHorizontalProcessor)
+            shared.ofType<ViewIntent.RetryHorizontal>().compose(retryHorizontalProcessor),
+            shared.ofType<ViewIntent.Refresh>().compose(refreshProcessor)
           )
         }
         .compose(sendSingleEvent)

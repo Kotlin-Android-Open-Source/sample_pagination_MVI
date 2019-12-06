@@ -4,10 +4,13 @@ import com.hoc.pagination_mvi.di.ApplicationScope
 import com.hoc.pagination_mvi.domain.dispatchers_schedulers.CoroutinesDispatchersProvider
 import com.hoc.pagination_mvi.domain.usecase.GetPhotosUseCase
 import com.hoc.pagination_mvi.domain.usecase.GetPostsUseCase
+import com.hoc.pagination_mvi.ui.main.MainContract.PartialStateChange.*
 import com.hoc.pagination_mvi.ui.main.MainContract.PhotoVS
 import com.hoc.pagination_mvi.ui.main.MainContract.PostVS
 import io.reactivex.Observable
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.rx2.rxObservable
 import javax.inject.Inject
@@ -22,47 +25,47 @@ class MainInteractorImpl @Inject constructor(
   override fun photoNextPageChanges(
     start: Int,
     limit: Int
-  ): Observable<MainContract.PartialStateChange.PhotoNextPage> {
+  ): Observable<PhotoNextPage> {
     return rxObservable(dispatchers.main) {
-      send(MainContract.PartialStateChange.PhotoNextPage.Loading)
+      send(PhotoNextPage.Loading)
       try {
         getPhotosUseCase(start = start, limit = limit)
           .map(MainContract::PhotoVS)
-          .let { MainContract.PartialStateChange.PhotoNextPage.Data(it) }
+          .let { PhotoNextPage.Data(it) }
           .let { send(it) }
       } catch (e: Exception) {
         delay(500)
-        send(MainContract.PartialStateChange.PhotoNextPage.Error(e))
+        send(PhotoNextPage.Error(e))
       }
     }
   }
 
-  override fun photoFirstPageChanges(limit: Int): Observable<MainContract.PartialStateChange.PhotoFirstPage> {
+  override fun photoFirstPageChanges(limit: Int): Observable<PhotoFirstPage> {
     return rxObservable(dispatchers.main) {
-      send(MainContract.PartialStateChange.PhotoFirstPage.Loading)
+      send(PhotoFirstPage.Loading)
       try {
         getPhotosUseCase(start = 0, limit = limit)
           .map(::PhotoVS)
-          .let { MainContract.PartialStateChange.PhotoFirstPage.Data(it) }
+          .let { PhotoFirstPage.Data(it) }
           .let { send(it) }
       } catch (e: Exception) {
         delay(500)
-        send(MainContract.PartialStateChange.PhotoFirstPage.Error(e))
+        send(PhotoFirstPage.Error(e))
       }
     }
   }
 
-  override fun postFirstPageChanges(limit: Int): Observable<MainContract.PartialStateChange.PostFirstPage> {
+  override fun postFirstPageChanges(limit: Int): Observable<PostFirstPage> {
     return rxObservable(dispatchers.main) {
-      send(MainContract.PartialStateChange.PostFirstPage.Loading)
+      send(PostFirstPage.Loading)
       try {
         getPostsUseCase(start = 0, limit = limit)
           .map(::PostVS)
-          .let { MainContract.PartialStateChange.PostFirstPage.Data(it) }
+          .let { PostFirstPage.Data(it) }
           .let { send(it) }
       } catch (e: Exception) {
         delay(500)
-        send(MainContract.PartialStateChange.PostFirstPage.Error(e))
+        send(PostFirstPage.Error(e))
       }
     }
   }
@@ -70,17 +73,43 @@ class MainInteractorImpl @Inject constructor(
   override fun postNextPageChanges(
     start: Int,
     limit: Int
-  ): Observable<MainContract.PartialStateChange.PostNextPage> {
+  ): Observable<PostNextPage> {
     return rxObservable(dispatchers.main) {
-      send(MainContract.PartialStateChange.PostNextPage.Loading)
+      send(PostNextPage.Loading)
       try {
         getPostsUseCase(start = start, limit = limit)
           .map(::PostVS)
-          .let { MainContract.PartialStateChange.PostNextPage.Data(it) }
+          .let { PostNextPage.Data(it) }
           .let { send(it) }
       } catch (e: Exception) {
         delay(500)
-        send(MainContract.PartialStateChange.PostNextPage.Error(e))
+        send(PostNextPage.Error(e))
+      }
+    }
+  }
+
+  override fun refreshAll(
+    limitPost: Int,
+    limitPhoto: Int
+  ): Observable<Refresh> {
+    return rxObservable(dispatchers.main) {
+      send(Refresh.Refreshing)
+
+      coroutineScope {
+        val async1 = async { getPostsUseCase(limit = limitPost, start = 0) }
+        val async2 = async { getPhotosUseCase(limit = limitPhoto, start = 0) }
+
+        try {
+          send(
+            Refresh.Success(
+              posts = async1.await().map(::PostVS),
+              photos = async2.await().map(::PhotoVS)
+            )
+          )
+        } catch (e: Exception) {
+          delay(500)
+          send(Refresh.Error(e))
+        }
       }
     }
   }
