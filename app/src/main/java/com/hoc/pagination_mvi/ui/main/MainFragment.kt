@@ -172,6 +172,7 @@ class MainFragment : Fragment() {
     return when (event) {
       MainContract.SingleEvent.RefreshSuccess -> {
         toast("Refresh success")
+        adapter.scrollHorizontalListToFirst()
       }
       is MainContract.SingleEvent.RefreshFailure -> {
         toast(

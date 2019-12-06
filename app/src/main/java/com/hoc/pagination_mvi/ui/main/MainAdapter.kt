@@ -1,6 +1,7 @@
 package com.hoc.pagination_mvi.ui.main
 
 import android.graphics.Rect
+import android.os.Parcelable
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -51,6 +52,8 @@ private object DiffUtilItemCallback : DiffUtil.ItemCallback<Item>() {
 
 class MainAdapter(private val compositeDisposable: CompositeDisposable) :
   ListAdapter<Item, MainAdapter.VH>(DiffUtilItemCallback) {
+  private val scrollToFirst = PublishSubject.create<Unit>()
+  private var layoutManagerSavedState: Parcelable? = null
 
   private val retryS = PublishSubject.create<Unit>()
   val retryObservable get() = retryS.asObservable()
@@ -167,14 +170,18 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
     private val progressBar = itemView.progress_bar_horizontal!!
     private val textError = itemView.text_error_horizontal!!
     private val buttonRetry = itemView.button_retry_horizontal!!
+
     private val adapter = HorizontalAdapter(compositeDisposable)
     private val visibleThreshold get() = 2
+    internal val linearLayoutManager =
+      LinearLayoutManager(itemView.context, RecyclerView.HORIZONTAL, false)
 
     init {
       recycler.run {
         setHasFixedSize(true)
         adapter = this@HorizontalListVH.adapter
-        layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false)
+        layoutManager = this@HorizontalListVH.linearLayoutManager
+
         addItemDecoration(object : RecyclerView.ItemDecoration() {
           override fun getItemOffsets(
             outRect: Rect,
@@ -216,6 +223,10 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
         }
         .subscribeBy { loadNextPageHorizontalS.onNext(Unit) }
         .addTo(compositeDisposable)
+
+      scrollToFirst
+        .subscribeBy { recycler.scrollToPosition(0) }
+        .addTo(compositeDisposable)
     }
 
     override fun bind(item: Item) {
@@ -231,6 +242,20 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
       textError.text = item.error?.message
 
       adapter.submitList(item.items)
+
+      layoutManagerSavedState?.let {
+        linearLayoutManager.onRestoreInstanceState(it)
+        layoutManagerSavedState = null
+      }
     }
   }
+
+  override fun onViewRecycled(holder: VH) {
+    super.onViewRecycled(holder)
+    if (holder is HorizontalListVH) {
+      layoutManagerSavedState = holder.linearLayoutManager.onSaveInstanceState()
+    }
+  }
+
+  fun scrollHorizontalListToFirst() = scrollToFirst.onNext(Unit)
 }
