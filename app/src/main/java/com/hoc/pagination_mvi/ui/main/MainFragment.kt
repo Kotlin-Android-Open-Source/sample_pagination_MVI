@@ -3,6 +3,7 @@ package com.hoc.pagination_mvi.ui.main
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
@@ -106,6 +107,17 @@ class MainFragment : Fragment() {
               outRect.bottom = space
             }
           }
+        }
+      })
+
+      addOnItemTouchListener(object : RecyclerView.SimpleOnItemTouchListener() {
+        override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+          if (e.action == MotionEvent.ACTION_DOWN &&
+            rv.scrollState == RecyclerView.SCROLL_STATE_SETTLING
+          ) {
+            rv.stopScroll()
+          }
+          return false
         }
       })
     }
