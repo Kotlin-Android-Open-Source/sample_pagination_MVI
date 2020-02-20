@@ -113,5 +113,5 @@ class MainInteractorImpl @Inject constructor(
     }
   }
 
-  private suspend fun delayError() = delay(400)
+  private suspend fun delayError() = delay(0)
 }
