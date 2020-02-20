@@ -29,6 +29,7 @@ import kotlinx.android.synthetic.main.fragment_main.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlin.LazyThreadSafetyMode.NONE
 
 @ExperimentalCoroutinesApi
 class MainFragment : Fragment() {
@@ -40,7 +41,7 @@ class MainFragment : Fragment() {
   private val maxSpanCount get() = if (requireContext().isOrientationPortrait) 2 else 4
   private val visibleThreshold get() = 2 * maxSpanCount + 1
 
-  private val adapter = MainAdapter(compositeDisposable)
+  private val adapter by lazy(NONE) { MainAdapter(compositeDisposable, recycler.recycledViewPool) }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     AndroidSupportInjection.inject(this)

@@ -50,7 +50,10 @@ private object DiffUtilItemCallback : DiffUtil.ItemCallback<Item>() {
   }
 }
 
-class MainAdapter(private val compositeDisposable: CompositeDisposable) :
+class MainAdapter(
+  private val compositeDisposable: CompositeDisposable,
+  private val viewPool: RecyclerView.RecycledViewPool
+) :
   ListAdapter<Item, MainAdapter.VH>(DiffUtilItemCallback) {
   private val scrollToFirst = PublishSubject.create<Unit>()
   private var layoutManagerSavedState: Parcelable? = null
@@ -79,8 +82,9 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
 
   override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
 
-  override fun onBindViewHolder(holder: VH, position: Int, payloads: MutableList<Any>) {
+  override fun onBindViewHolder(holder: VH, position: Int, payloads: List<Any>) {
     if (payloads.isEmpty()) return holder.bind(getItem(position))
+    Log.d("###", "[PAYLOAD] MAIN size=${payloads.size}")
     payloads.forEach { payload ->
       Log.d("###", "[PAYLOAD] $payload")
       when {
@@ -166,7 +170,7 @@ class MainAdapter(private val compositeDisposable: CompositeDisposable) :
   }
 
   private inner class HorizontalListVH(itemView: View, parent: ViewGroup) : VH(itemView) {
-    private val recycler = itemView.recycler_horizontal!!
+    private val recycler = itemView.recycler_horizontal!!.apply { setRecycledViewPool(viewPool) }
     private val progressBar = itemView.progress_bar_horizontal!!
     private val textError = itemView.text_error_horizontal!!
     private val buttonRetry = itemView.button_retry_horizontal!!

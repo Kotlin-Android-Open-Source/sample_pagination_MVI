@@ -1,5 +1,6 @@
 package com.hoc.pagination_mvi.ui.main
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -61,8 +62,9 @@ class HorizontalAdapter(
 
   override fun onBindViewHolder(holder: VH, position: Int) = holder.bind(getItem(position))
 
-  override fun onBindViewHolder(holder: VH, position: Int, payloads: MutableList<Any>) {
+  override fun onBindViewHolder(holder: VH, position: Int, payloads: List<Any>) {
     if (payloads.isEmpty()) return holder.bind(getItem(position))
+    Log.d("###", "[PAYLOAD] HORIZONTAL size=${payloads.size}")
     payloads.forEach { payload ->
       when {
         payload is PostVS && holder is PostVH -> holder.update(payload)
