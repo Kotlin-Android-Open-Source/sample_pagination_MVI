@@ -34,7 +34,7 @@ class MainInteractorImpl @Inject constructor(
           .let { PhotoNextPage.Data(it) }
           .let { send(it) }
       } catch (e: Exception) {
-        delay(500)
+        delayError()
         send(PhotoNextPage.Error(e))
       }
     }
@@ -49,7 +49,7 @@ class MainInteractorImpl @Inject constructor(
           .let { PhotoFirstPage.Data(it) }
           .let { send(it) }
       } catch (e: Exception) {
-        delay(500)
+        delayError()
         send(PhotoFirstPage.Error(e))
       }
     }
@@ -64,7 +64,7 @@ class MainInteractorImpl @Inject constructor(
           .let { PostFirstPage.Data(it) }
           .let { send(it) }
       } catch (e: Exception) {
-        delay(500)
+        delayError()
         send(PostFirstPage.Error(e))
       }
     }
@@ -82,7 +82,7 @@ class MainInteractorImpl @Inject constructor(
           .let { PostNextPage.Data(it) }
           .let { send(it) }
       } catch (e: Exception) {
-        delay(500)
+        delayError()
         send(PostNextPage.Error(e))
       }
     }
@@ -107,9 +107,11 @@ class MainInteractorImpl @Inject constructor(
           )
         }
       } catch (e: Exception) {
-        delay(500)
+        delayError()
         send(Refresh.Error(e))
       }
     }
   }
+
+  private suspend fun delayError() = delay(400)
 }
