@@ -70,6 +70,10 @@ class MainAdapter(
   private val retryHorizontalS = PublishSubject.create<Unit>()
   val retryHorizontalObservable get() = retryHorizontalS.asObservable()
 
+  /**
+   *
+   */
+
   override fun onCreateViewHolder(parent: ViewGroup, @LayoutRes viewType: Int): VH {
     val itemView = LayoutInflater.from(parent.context).inflate(viewType, parent, false)
     return when (viewType) {
@@ -97,6 +101,10 @@ class MainAdapter(
 
   @LayoutRes
   override fun getItemViewType(position: Int) = getItem(position).viewType
+
+  /**
+   *
+   */
 
   abstract class VH(itemView: View) : RecyclerView.ViewHolder(itemView) {
     abstract fun bind(item: Item)
@@ -193,8 +201,12 @@ class MainAdapter(
             parent: RecyclerView,
             state: RecyclerView.State
           ) {
-            outRect.left =
-              if (parent.getChildAdapterPosition(view) == parent.adapter!!.itemCount - 1) 0 else 8
+            outRect.run {
+              right = if (parent.getChildAdapterPosition(view) == parent.adapter!!.itemCount - 1) 0 else 8
+              left = 0
+              top = 0
+              bottom = 0
+            }
           }
         })
       }
@@ -253,6 +265,10 @@ class MainAdapter(
       }
     }
   }
+
+  /**
+   *
+   */
 
   override fun onViewRecycled(holder: VH) {
     super.onViewRecycled(holder)
